@@ -35,8 +35,8 @@ class BuildSplitCell extends StatelessWidget {
         borderRadius: BorderRadius.zero, // ✨ [수정] 모서리를 둥글지 않게, 칼같이 각지게 만듭니다.
         border: Border.all(
           // 두께를 0.5로 슬림하게 해서 칸들이 붙어도 테두리가 두꺼워 보이지 않게 합니다.
-          color: isSelected ? Colors.green : Colors.grey.shade200,
-          width: isSelected ? 2.0 : 0.5, 
+          color:  Colors.grey.shade200,
+          width:  0.5, 
         ),
       ),
       child: Column(
@@ -61,7 +61,7 @@ class BuildSplitCell extends StatelessWidget {
                   '${day.day}',
                   style: TextStyle(
                     color: textColor,
-                    fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isToday  ? FontWeight.bold : FontWeight.normal,
                     fontSize: 11,
                   ),
                 ),

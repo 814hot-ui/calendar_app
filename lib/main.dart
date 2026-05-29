@@ -157,7 +157,7 @@ class _ImageCalendarState extends State<ImageCalendar> {
                     return BuildSplitCell(
                       day: day,
                       textColor: day.weekday == 7 ? Colors.red.shade700 : (day.weekday == 6 ? Colors.blue.shade700 : Colors.black87),
-                      barBgColor: isSelected ? Colors.green.shade50 : Colors.grey.shade100,
+                      barBgColor: isSelected ? Colors.grey.shade100 : Colors.grey.shade100,
                       isSelected: isSelected,
                       data: cellData,
                       showMemo: _showMemoWithImage,
@@ -171,7 +171,7 @@ class _ImageCalendarState extends State<ImageCalendar> {
                     return BuildSplitCell(
                       day: day,
                       textColor: Colors.blue.shade900,
-                      barBgColor: isSelected ? Colors.green.shade50 : Colors.blue.shade50,
+                      barBgColor: isSelected ? Colors.grey.shade100 : Colors.blue.shade50,
                       isToday: true,
                       isSelected: isSelected,
                       data: cellData,
@@ -184,7 +184,7 @@ class _ImageCalendarState extends State<ImageCalendar> {
                     return BuildSplitCell(
                       day: day,
                       textColor: Colors.grey.shade400,
-                      barBgColor: Colors.grey.shade50,
+                      barBgColor: Colors.grey.shade100,
                       isOutside: true,
                       showMemo: _showMemoWithImage,
                       data: cellData,
@@ -199,7 +199,7 @@ class _ImageCalendarState extends State<ImageCalendar> {
                     return BuildSplitCell(
                       day: day,
                       textColor: day.weekday == 7 ? Colors.red.shade700 : (day.weekday == 6 ? Colors.blue.shade700 : Colors.black87),
-                      barBgColor: Colors.green.shade50, // 선택된 날짜는 연한 녹색 바탕으로 강조!
+                      barBgColor: Colors.grey.shade100, // 선택된 날짜는 연한 녹색 바탕으로 강조!
                       isSelected: true, // 🟢 테두리 강조 스위치 On!
                       isToday: isSameDay(DateTime.now(), day), // 혹시 오늘 날짜를 선택했을 수도 있으니 체크
                       data: cellData,
