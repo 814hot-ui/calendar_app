@@ -34,6 +34,7 @@ class _ImageCalendarState extends State<ImageCalendar> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   final Map<DateTime, CalendarCellData> _calendarData = {};
+  bool _showMemoWithImage = true;
 
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
@@ -44,23 +45,53 @@ class _ImageCalendarState extends State<ImageCalendar> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('나만의 이미지 달력', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Biscuit Calendar', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(
+              _showMemoWithImage ? Icons.toggle_on : Icons.toggle_off, // 🔄 아이콘 변경
+              color: _showMemoWithImage ? Colors.blue : Colors.grey,
+            ),
+            tooltip: _showMemoWithImage ? '사진+메모 보기 모드' : '사진만 보기 모드',
+            onPressed: () {
+              setState(() {
+                _showMemoWithImage = !_showMemoWithImage; // 누를 때마다 모드 반전
+              });
+              
+              // 폰에서 바로 확인용 토스트/스낵바 띄우기
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(_showMemoWithImage ? '📷 사진과 📝 메모를 함께 보여줍니다.' : '📷 사진만 깔끔하게 보여줍니다.'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
+
             padding: const EdgeInsets.all(12.0),
+
             child: Container(
-              height: MediaQuery.of(context).size.height * 0.82,
+              height: MediaQuery.of(context).orientation == Orientation.portrait ? MediaQuery.of(context).size.height * 0.82 : null,
               decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border.all(color: Colors.grey.shade400, width: 1.5),
                 borderRadius: BorderRadius.circular(8.0),
               ),
+
               child: TableCalendar(
+
+                // 달력이 가로 제스처(왼쪽/오른쪽 월 이동)만 흡수하게 제한합니다. 
+                // 이렇게 하면 세로로 밀 때 스크롤 주머니가 정상 작동합니다!
+                availableGestures: AvailableGestures.horizontalSwipe,
+
                 firstDay: DateTime.utc(2020, 1, 1),
                 lastDay: DateTime.utc(2030, 12, 31),
                 focusedDay: _focusedDay,
@@ -129,6 +160,7 @@ class _ImageCalendarState extends State<ImageCalendar> {
                       barBgColor: isSelected ? Colors.green.shade50 : Colors.grey.shade100,
                       isSelected: isSelected,
                       data: cellData,
+                      showMemo: _showMemoWithImage,
                     );
                   },
                   
@@ -143,6 +175,7 @@ class _ImageCalendarState extends State<ImageCalendar> {
                       isToday: true,
                       isSelected: isSelected,
                       data: cellData,
+                      showMemo: _showMemoWithImage,
                     );
                   },
                   
@@ -153,9 +186,26 @@ class _ImageCalendarState extends State<ImageCalendar> {
                       textColor: Colors.grey.shade400,
                       barBgColor: Colors.grey.shade50,
                       isOutside: true,
+                      showMemo: _showMemoWithImage,
                       data: cellData,
                     );
                   },
+
+                  selectedBuilder: (context, day, focusedDay) {
+                    final cellData = _calendarData[_normalizeDate(day)];
+                    
+                    // 선택된 날짜도 우리만의 'BuildSplitCell'을 똑같이 쓰되, 
+                    // isSelected를 true로 주어 초록색 테두리만 예쁘게 돌리도록 만듭니다!
+                    return BuildSplitCell(
+                      day: day,
+                      textColor: day.weekday == 7 ? Colors.red.shade700 : (day.weekday == 6 ? Colors.blue.shade700 : Colors.black87),
+                      barBgColor: Colors.green.shade50, // 선택된 날짜는 연한 녹색 바탕으로 강조!
+                      isSelected: true, // 🟢 테두리 강조 스위치 On!
+                      isToday: isSameDay(DateTime.now(), day), // 혹시 오늘 날짜를 선택했을 수도 있으니 체크
+                      data: cellData,
+                      showMemo: _showMemoWithImage, // 아까 만든 보기 옵션도 같이 넘겨줍니다!
+                    );
+                  },  
                 ),
               ),
             ),
