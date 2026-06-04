@@ -143,6 +143,13 @@ class _ImageCalendarState extends State<ImageCalendar> {
                           _focusedDay = focusedDay;
                         });
                       },
+
+                      // 🔥 [이 줄을 추가하세요!] 상단 년/월 헤더를 누르면 오늘 날짜로 포커스 이동
+                      onHeaderTapped: (focusedDay) {
+                        setState(() {
+                          _focusedDay = DateTime.now();
+                        });
+                      },
                       onDayLongPressed: (selectedDay, focusedDay) {
                         setState(() {
                           _selectedDay = selectedDay;

@@ -73,8 +73,8 @@ class BuildSplitCell extends StatelessWidget {
                     children: data!.emotions.map((emotionName) {
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                        width: 7.5,
-                        height: 7.5,
+                        width: 6.5,
+                        height: 6.5,
                         decoration: BoxDecoration(
                           color: getEmotionColor(emotionName),
                           shape: BoxShape.circle,

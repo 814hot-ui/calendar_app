@@ -1,0 +1,4 @@
+"NSPhotoLibraryUsageDescription" = "일기장에 사진을 등록하고 추천 사진을 보여주기 위해 사진첩 접근 권한이 필요합니다.";
+"NSCameraUsageDescription" = "일기장에 등록할 사진을 촬영하기 위해 카메라 접근 권한이 필요합니다.";
+"NSMicrophoneUsageDescription" = "동영상 촬영 시 음성을 녹음하기 위해 마이크 권한이 필요합니다.";
+"NSPhotoLibraryAddUsageDescription" = "달력 이미지를 갤러리에 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다."
