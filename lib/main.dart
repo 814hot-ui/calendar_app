@@ -33,7 +33,13 @@ class MyApp extends StatelessWidget {
       locale: context.locale,
       debugShowCheckedModeBanner: false,
       title: 'app_title'.tr(),
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.pink.shade50,
+          brightness: Brightness.light, // 라이트 모드
+        ),
+      ),
       home: const ImageCalendar(),
     );
   }
@@ -74,14 +80,14 @@ class _ImageCalendarState extends State<ImageCalendar> {
         // 3. 성공 안내 메시지 띄우기
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('📅 달력 이미지가 갤러리에 안전하게 저장되었습니다!')),
+            const SnackBar(content: Text('Monthly Image Saved to Gallery!')),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: $e')),
+          const SnackBar(content: Text('Failed to save image.')),
         );
       }
     }
@@ -156,7 +162,15 @@ class _ImageCalendarState extends State<ImageCalendar> {
                       },         
  
                       // 📏 가로 폭 기반 높이 계산 (이건 정상적인 수식입니다!)
-                      rowHeight: ((MediaQuery.of(context).size.width - 24) / 7) * 1.5, 
+                      rowHeight: (() {
+                        // 1. 날짜 한 칸의 순수 가로 너비를 구합니다.
+                        final double cellWidth = (MediaQuery.of(context).size.width - 24) / 7;
+                        // 2. 가로 너비 기준 1:1.3 비율의 세로 높이를 구합니다. (너비 * 1.3)
+                        final double imageHeight = cellWidth * 1.3;
+                        // 3. 이미지 높이에 상단 날짜 바 높이(20)를 더한 값이 최종 셀 높이가 됩니다.
+                        return imageHeight + 20;
+                      })(),
+
                       daysOfWeekHeight: 30,
                       
                       headerStyle: const HeaderStyle(

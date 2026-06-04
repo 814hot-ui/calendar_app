@@ -29,10 +29,10 @@ class BuildSplitCell extends StatelessWidget {
     final bool hasImage = data != null && data!.image != null;
 
     return Container(
-      margin: EdgeInsets.zero, // ✨ [수정] 칸 사이의 틈을 완전히 없애서 딱 붙입니다.
+      margin: EdgeInsets.zero, // ✨ 칸 사이의 틈을 완전히 없애서 딱 붙입니다.
       decoration: BoxDecoration(
         color: isToday ? Colors.amber.shade50 : Colors.white,
-        borderRadius: BorderRadius.zero, // ✨ [수정] 모서리를 둥글지 않게, 칼같이 각지게 만듭니다.
+        borderRadius: BorderRadius.zero, // ✨ 모서리를 둥글지 않게, 칼같이 각지게 만듭니다.
         border: Border.all(
           // 두께를 0.5로 슬림하게 해서 칸들이 붙어도 테두리가 두꺼워 보이지 않게 합니다.
           color:  Colors.grey.shade200,
@@ -48,7 +48,7 @@ class BuildSplitCell extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4), // 날짜 왼쪽 여백
             decoration: BoxDecoration(
               color: barBgColor,
-              borderRadius: BorderRadius.zero, // ✨ [수정] 상단 바 음영 모서리도 각지게!
+              borderRadius: BorderRadius.zero, // ✨ 상단 바 음영 모서리도 각지게!
               border: Border(
                 bottom: BorderSide(color: Colors.grey.shade200, width: 0.5),
               ),
@@ -73,8 +73,8 @@ class BuildSplitCell extends StatelessWidget {
                     children: data!.emotions.map((emotionName) {
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                        width: 4.5,
-                        height: 4.5,
+                        width: 7.5,
+                        height: 7.5,
                         decoration: BoxDecoration(
                           color: getEmotionColor(emotionName),
                           shape: BoxShape.circle,
@@ -96,17 +96,23 @@ class BuildSplitCell extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // 📸 사진 레이어
+                  // 📸 사진 레이어 (1:1.3 종횡비 및 여백 유지 ✨)
                   if (hasImage)
-                    Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.zero, // ✨ 사진 모서리도 각지게 맞춤
+                    Align(
+                    alignment: Alignment.center, // 셀의 정확한 정중앙에 배치
+                    child: AspectRatio(
+                      aspectRatio: 1 / 1.3, // 🔥 무조건 1:1.3 비율 유지
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.zero,
+                        ),
                         child: Image.file(
                           data!.image!,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.cover, // 1:1.3 프레임 안을 빈틈없이 채움
                         ),
                       ),
                     ),
+                  ),
 
                   // 📝 메모 레이어
                   if (showMemo && data != null && data!.memo.isNotEmpty)
