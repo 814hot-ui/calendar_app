@@ -431,7 +431,7 @@ Future<File?> _showPhotoPickerBottomSheet({
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('그날의 추천 사진', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('Today\'s Photos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   TextButton.icon(
                     onPressed: () async {
                       final XFile? pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -442,7 +442,7 @@ Future<File?> _showPhotoPickerBottomSheet({
                       }
                     },
                     icon: const Icon(Icons.photo_library, size: 18),
-                    label: const Text('전체 사진 보기'),
+                    label: const Text('All Photos', style: TextStyle(fontSize: 14)),
                   ),
                 ],
               ),
