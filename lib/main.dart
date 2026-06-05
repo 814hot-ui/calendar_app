@@ -5,8 +5,8 @@ import 'models/cell_data.dart';
 import 'widgets/calendar_cell.dart';
 import 'widgets/entry_dialog.dart';
 import 'package:easy_localization/easy_localization.dart'; 
-import 'package:screenshot/screenshot.dart'; // ✨ 추가
-import 'package:gal/gal.dart'; // ✨ 추가
+import 'package:screenshot/screenshot.dart'; 
+import 'package:gal/gal.dart'; 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.pink.shade50,
-          brightness: Brightness.light, // 라이트 모드
+          brightness: Brightness.light, 
         ),
       ),
       home: const ImageCalendar(),
@@ -58,26 +58,20 @@ class _ImageCalendarState extends State<ImageCalendar> {
   final Map<DateTime, CalendarCellData> _calendarData = {};
   bool _showMemoWithImage = true;
 
-  // ✨ [추가] 스크롤 캡처를 제어할 컨트롤러 선언
   final ScreenshotController _screenshotController = ScreenshotController();
 
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
   }
 
-  // ✨ [추가] 전체 스크롤 캡처 및 저장 기능 함수
   Future<void> _captureAndSaveAndShowSnackBar() async {
     try {
-      // 1. 화면에 보이지 않는 스크롤 영역까지 통째로 이미지 바이트 데이터로 구워냅니다.
       final Uint8List? imageBytes = await _screenshotController.capture(
-        delay: const Duration(milliseconds: 100), // 안정적인 렌더링을 위한 미세한 대기 시간
+        delay: const Duration(milliseconds: 100), 
       );
 
       if (imageBytes != null) {
-        // 2. 구워낸 바이트 데이터를 스마트폰 갤러리에 저장합니다.
         await Gal.putImageBytes(imageBytes);
-        
-        // 3. 성공 안내 메시지 띄우기
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Monthly Image Saved to Gallery!')),
@@ -113,23 +107,20 @@ class _ImageCalendarState extends State<ImageCalendar> {
         child: SafeArea(
           child: Screenshot(
             controller: _screenshotController,
-
-            child:GestureDetector(
+            child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               child: Padding(
                 padding: const EdgeInsets.all(5.0),
                 child: Container(
-                  // 💡 테두리와 배경색을 주고, 내부 알맹이 크기에 맞춰 늘어나도록 만듭니다.
                   decoration: BoxDecoration(
                     color: Colors.white,
                     border: Border.all(color: Colors.grey.shade400, width: 1.5),
                     borderRadius: BorderRadius.circular(5.0),
                   ),
                   
-                  // 💥 [핵심] TableCalendar가 스크롤 안에서 춤추지 못하게 수직 제약(Constraints)을 꽉 잡아줍니다.
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
-                      minHeight: 100, // 마이너스 높이 에러 방지용 안전선
+                      minHeight: 100, 
                     ),
                     child: TableCalendar(
                       availableGestures: AvailableGestures.horizontalSwipe,
@@ -143,13 +134,14 @@ class _ImageCalendarState extends State<ImageCalendar> {
                           _focusedDay = focusedDay;
                         });
                       },
-
-                      // 🔥 [이 줄을 추가하세요!] 상단 년/월 헤더를 누르면 오늘 날짜로 포커스 이동
+                      
+                      // ✨ [추가] 달력 상단 년/월 헤더를 클릭하면 무조건 오늘 날짜가 있는 달로 복귀!
                       onHeaderTapped: (focusedDay) {
                         setState(() {
                           _focusedDay = DateTime.now();
                         });
                       },
+
                       onDayLongPressed: (selectedDay, focusedDay) {
                         setState(() {
                           _selectedDay = selectedDay;
@@ -168,13 +160,9 @@ class _ImageCalendarState extends State<ImageCalendar> {
                         );
                       },         
  
-                      // 📏 가로 폭 기반 높이 계산 (이건 정상적인 수식입니다!)
                       rowHeight: (() {
-                        // 1. 날짜 한 칸의 순수 가로 너비를 구합니다.
                         final double cellWidth = (MediaQuery.of(context).size.width - 24) / 7;
-                        // 2. 가로 너비 기준 1:1.3 비율의 세로 높이를 구합니다. (너비 * 1.3)
                         final double imageHeight = cellWidth * 1.3;
-                        // 3. 이미지 높이에 상단 날짜 바 높이(20)를 더한 값이 최종 셀 높이가 됩니다.
                         return imageHeight + 20;
                       })(),
 
@@ -191,9 +179,9 @@ class _ImageCalendarState extends State<ImageCalendar> {
                       calendarBuilders: CalendarBuilders(
                         dowBuilder: (context, day) {
                           if (day.weekday == 7) {
-                            return Center(child: Text('sun'.tr(), style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)));
+                            return Center(child: Text('sun'.tr(), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)));
                           } else if (day.weekday == 6) {
-                            return Center(child: Text('sat'.tr(), style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)));
+                            return Center(child: Text('sat'.tr(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)));
                           } else {
                             final text = ['mon'.tr(), 'tue'.tr(), 'wed'.tr(), 'thu'.tr(), 'fri'.tr()][day.weekday - 1];
                             return Center(child: Text(text, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)));
@@ -249,9 +237,9 @@ class _ImageCalendarState extends State<ImageCalendar> {
                 ),
               ),
             ),
+          ),
         ),
       ),
-    ),
     );
   }
 }
@@ -260,14 +248,14 @@ class BottomAlignedAppBar extends StatelessWidget implements PreferredSizeWidget
   final String title;
   final bool showMemoWithImage;
   final VoidCallback onTogglePressed;
-  final VoidCallback onSavePressed; // 👈 1. 이 줄이 클래스 내부에 선언되어 있어야 합니다!
+  final VoidCallback onSavePressed; 
 
   const BottomAlignedAppBar({
     super.key,
     required this.title,
     required this.showMemoWithImage,
     required this.onTogglePressed,
-    required this.onSavePressed, // 👈 2. 생성자(Constructor)에도 반드시 필수로 등록해 줘야 합니다!
+    required this.onSavePressed, 
   });
 
   @override
@@ -279,7 +267,6 @@ class BottomAlignedAppBar extends StatelessWidget implements PreferredSizeWidget
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
-      actions: const [],
       title: SizedBox(
         height: 52.0,
         child: Container(
@@ -297,11 +284,10 @@ class BottomAlignedAppBar extends StatelessWidget implements PreferredSizeWidget
               ),
               const Spacer(),
               
-              // 📸 3. 실제 저장 기능을 실행할 다운로드 아이콘 버튼 구역
               Transform.translate(
                 offset: const Offset(0, 1.0),
                 child: GestureDetector(
-                  onTap: onSavePressed, // 👈 여기서 위에서 받아온 함수를 실행하게 됩니다.
+                  onTap: onSavePressed, 
                   behavior: HitTestBehavior.opaque,
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 10),
@@ -314,7 +300,6 @@ class BottomAlignedAppBar extends StatelessWidget implements PreferredSizeWidget
                 ),
               ),
               
-              // 🎯 기존 토글 버튼 구역
               Transform.translate(
                 offset: const Offset(0, 4.0),
                 child: GestureDetector(
