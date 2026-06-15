@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart'; // 💡 실시간 진짜 폴더 조회를 위해 필수!
 import '../models/cell_data.dart';
 import '../models/emotion.dart';
 
@@ -24,50 +26,60 @@ class BuildSplitCell extends StatelessWidget {
     required this.showMemo,
   });
 
+  // 💡 [실시간 주소 조립 나침반] Isar에 저장된 파일 이름과 현재 iOS가 실시간 발급한 진짜 방 주소를 합쳐서 파일을 낚아옵니다.
+  Future<File?> _getRealImageFile() async {
+    if (data == null || data!.imagePath == null || data!.imagePath!.isEmpty)
+      return null;
+
+    // 만약 예전 주소가 통째로 남아있는 찌꺼기라면 파일 이름만 강제로 발라냅니다.
+    final String pureFileName = data!.imagePath!.split('/').last;
+
+    // 🏠 지금 켜진 앱의 실시간 진짜 영구보관소 주소를 알아냅니다 (iOS UUID 난수 변경 완벽 방어!)
+    final Directory appDir = await getApplicationDocumentsDirectory();
+    final String realPath = '${appDir.path}/$pureFileName';
+
+    final File file = File(realPath);
+    if (await file.exists()) {
+      return file;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool hasImage = data != null && data!.image != null;
-
     return Container(
-      margin: EdgeInsets.zero, // ✨ 칸 사이의 틈을 완전히 없애서 딱 붙입니다.
+      margin: EdgeInsets.zero,
       decoration: BoxDecoration(
         color: isToday ? Colors.amber.shade50 : Colors.white,
-        borderRadius: BorderRadius.zero, // ✨ 모서리를 둥글지 않게, 칼같이 각지게 만듭니다.
-        border: Border.all(
-          // 두께를 0.5로 슬림하게 해서 칸들이 붙어도 테두리가 두꺼워 보이지 않게 합니다.
-          color:  Colors.grey.shade200,
-          width:  0.5, 
-        ),
+        border: Border.all(color: Colors.grey.shade200, width: 0.5),
       ),
       child: Column(
         children: [
-          // 1층: 상단 날짜 바
+          // 1층: 날짜 헤더
           Container(
             width: double.infinity,
-            height: 20, 
-            padding: const EdgeInsets.symmetric(horizontal: 4), // 날짜 왼쪽 여백
+            height: 20,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
               color: barBgColor,
-              borderRadius: BorderRadius.zero, // ✨ 상단 바 음영 모서리도 각지게!
               border: Border(
                 bottom: BorderSide(color: Colors.grey.shade200, width: 0.5),
               ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.start, // ✨ 날짜 왼쪽 정렬 유지
-              crossAxisAlignment: CrossAxisAlignment.center, 
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   '${day.day}',
                   style: TextStyle(
                     color: textColor,
-                    fontWeight: isToday  ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
                     fontSize: 11,
                   ),
                 ),
-                // 감정 색상 점 3개
                 if (data != null && data!.emotions.isNotEmpty) ...[
-                  const SizedBox(width: 4), 
+                  const SizedBox(width: 4),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: data!.emotions.map((emotionName) {
@@ -86,60 +98,70 @@ class BuildSplitCell extends StatelessWidget {
               ],
             ),
           ),
-          
-          // 2층: 하단 내용 영역
+
+          // 2층: 일기 내용 및 사진 영역
           Expanded(
             child: Container(
               width: double.infinity,
-              color: Colors.white, 
+              color: Colors.white,
               padding: const EdgeInsets.all(2),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // 📸 사진 레이어 (1:1.3 종횡비 및 여백 유지 ✨)
-                  if (hasImage)
-                    Align(
-                    alignment: Alignment.center, // 셀의 정확한 정중앙에 배치
-                    child: AspectRatio(
-                      aspectRatio: 1 / 1.3, // 🔥 무조건 1:1.3 비율 유지
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        child: Image.file(
-                          data!.image!,
-                          fit: BoxFit.cover, // 1:1.3 프레임 안을 빈틈없이 채움
-                        ),
-                      ),
-                    ),
-                  ),
+              child: FutureBuilder<File?>(
+                future: _getRealImageFile(),
+                builder: (context, snapshot) {
+                  final File? imgFile = snapshot.data;
+                  final bool displayFile = imgFile != null;
 
-                  // 📝 메모 레이어
-                  if (showMemo && data != null && data!.memo.isNotEmpty)
-                    Positioned(
-                      bottom: 1,
-                      left: 2,
-                      right: 2,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0.5),
-                        decoration: BoxDecoration(
-                          color: hasImage ? Colors.white.withValues(alpha: 0.8) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: Text(
-                          data!.memo,
-                          style: const TextStyle(
-                            fontSize: 9, 
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w500,
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // 📸 실시간 경로가 확인된 진짜 사진 레이어
+                      if (displayFile)
+                        Align(
+                          alignment: Alignment.center,
+                          child: AspectRatio(
+                            aspectRatio: 1 / 1.3,
+                            child: Image.file(
+                              imgFile,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const SizedBox.shrink(),
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
                         ),
-                      ),
-                    ),
-                ],
+
+                      // 📝 메모 레이어 (🔧 괄호 오타 수리 완료!)
+                      if (showMemo && data != null && data!.memo.isNotEmpty)
+                        Positioned(
+                          bottom: 1,
+                          left: 2,
+                          right: 2,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 2,
+                              vertical: 0.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: displayFile
+                                  ? Colors.white.withValues(alpha: 0.8)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: Text(
+                              data!.memo,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
           ),

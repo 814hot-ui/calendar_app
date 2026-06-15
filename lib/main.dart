@@ -3,19 +3,30 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'models/cell_data.dart';
 import 'widgets/calendar_cell.dart';
-import 'widgets/entry_dialog.dart';
-import 'package:easy_localization/easy_localization.dart'; 
-import 'package:screenshot/screenshot.dart'; 
-import 'package:gal/gal.dart'; 
+
+// ✨ 우리가 쓸 진짜 파일 경로들만 정확하게 꽂아줍니다.
+import 'services/db_service.dart'; // 💡 진짜 IsarDbService가 있는 곳
+import 'widgets/entry_dialog.dart'; // 💡 진짜 showEntryDialog 함수가 있는 곳
+
+import 'package:easy_localization/easy_localization.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:gal/gal.dart';
 
 void main() async {
+  // 1. 플러터 엔진 초기화 (기존 코드)
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 2. 다국어 패키지 초기화 (기존 코드)
   await EasyLocalization.ensureInitialized();
 
+  // 3. 💾 Isar 데이터베이스 서랍 열기 (새로 추가된 마법의 한 줄!)
+  await IsarDbService.instance.init();
+
+  // 4. 앱 실행 (기존 EasyLocalization 구조 그대로 유지!)
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('ko'), Locale('en')],
-      path: 'assets/translations', 
+      path: 'assets/translations',
       fallbackLocale: const Locale('en'),
       child: const MyApp(),
     ),
@@ -37,7 +48,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.pink.shade50,
-          brightness: Brightness.light, 
+          brightness: Brightness.light,
         ),
       ),
       home: const ImageCalendar(),
@@ -60,6 +71,48 @@ class _ImageCalendarState extends State<ImageCalendar> {
 
   final ScreenshotController _screenshotController = ScreenshotController();
 
+  // 💡 데이터베이스 로딩 상태를 관리하는 변수입니다.
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // 💾 앱이 켜질 때 Isar에 저장된 기존 일기들을 몽땅 불러옵니다!
+    _loadAllCalendarData();
+  }
+
+  // 💾 Isar 데이터베이스에서 모든 데이터를 긁어와 화면 맵에 매핑하는 함수입니다.
+  Future<void> _loadAllCalendarData() async {
+    try {
+      // 1. DB에서 데이터를 일단 다 긁어옵니다.
+      final allData = await IsarDbService.instance.getAllCellData();
+
+      if (mounted) {
+        setState(() {
+          _calendarData.clear();
+
+          // 2. 데이터가 있다면 화면 맵(_calendarData)에 이쁘게 넣어줍니다.
+          if (allData.isNotEmpty) {
+            for (var data in allData) {
+              final normalizedDate = _normalizeDate(data.date);
+              _calendarData[normalizedDate] = data;
+            }
+          }
+
+          // 3. ✨ 데이터가 있든 없든 다 불러왔으니 로딩을 마칩니다!
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      // 4. 🔥 만에 하나 에러가 나더라도 뱅글뱅글 돌지 않고 화면은 보여주도록 방어!
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
   }
@@ -67,7 +120,7 @@ class _ImageCalendarState extends State<ImageCalendar> {
   Future<void> _captureAndSaveAndShowSnackBar() async {
     try {
       final Uint8List? imageBytes = await _screenshotController.capture(
-        delay: const Duration(milliseconds: 100), 
+        delay: const Duration(milliseconds: 100),
       );
 
       if (imageBytes != null) {
@@ -80,9 +133,9 @@ class _ImageCalendarState extends State<ImageCalendar> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save image.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to save image.')));
       }
     }
   }
@@ -102,160 +155,226 @@ class _ImageCalendarState extends State<ImageCalendar> {
         },
         onSavePressed: _captureAndSaveAndShowSnackBar,
       ),
-      
-      body: SingleChildScrollView(
-        child: SafeArea(
-          child: Screenshot(
-            controller: _screenshotController,
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              child: Padding(
-                padding: const EdgeInsets.all(5.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade400, width: 1.5),
-                    borderRadius: BorderRadius.circular(5.0),
-                  ),
-                  
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      minHeight: 100, 
-                    ),
-                    child: TableCalendar(
-                      availableGestures: AvailableGestures.horizontalSwipe,
-                      firstDay: DateTime.utc(2020, 1, 1),
-                      lastDay: DateTime.utc(2030, 12, 31),
-                      focusedDay: _focusedDay,
-                      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                      onDaySelected: (selectedDay, focusedDay) {
-                        setState(() {
-                          _selectedDay = selectedDay;
-                          _focusedDay = focusedDay;
-                        });
-                      },
-                      
-                      // ✨ [추가] 달력 상단 년/월 헤더를 클릭하면 무조건 오늘 날짜가 있는 달로 복귀!
-                      onHeaderTapped: (focusedDay) {
-                        setState(() {
-                          _focusedDay = DateTime.now();
-                        });
-                      },
 
-                      onDayLongPressed: (selectedDay, focusedDay) {
-                        setState(() {
-                          _selectedDay = selectedDay;
-                          _focusedDay = focusedDay;
-                        });
-                        final normalizedDate = _normalizeDate(selectedDay);
-                        showEntryDialog(
-                          context: context,
-                          date: selectedDay,
-                          existingData: _calendarData[normalizedDate],
-                          onSave: (newData) {
-                            setState(() {
-                              _calendarData[normalizedDate] = newData;
-                            });
-                          },
-                        );
-                      },         
- 
-                      rowHeight: (() {
-                        final double cellWidth = (MediaQuery.of(context).size.width - 24) / 7;
-                        final double imageHeight = cellWidth * 1.3;
-                        return imageHeight + 20;
-                      })(),
+      // 💡 데이터베이스에서 일기를 다 불러오기 전까진 로딩 인디케이터를 띄워 튕김을 방지합니다.
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: SafeArea(
+                child: Screenshot(
+                  controller: _screenshotController,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    child: Padding(
+                      padding: const EdgeInsets.all(5.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(
+                            color: Colors.grey.shade400,
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(5.0),
+                        ),
 
-                      daysOfWeekHeight: 30,
-                      
-                      headerStyle: const HeaderStyle(
-                        formatButtonVisible: false,
-                        titleCentered: true,
-                        titleTextStyle: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
-                        leftChevronIcon: Icon(Icons.chevron_left, color: Colors.black),
-                        rightChevronIcon: Icon(Icons.chevron_right, color: Colors.black),
-                        headerPadding: EdgeInsets.symmetric(vertical: 0.0), 
-                      ),
-                      calendarBuilders: CalendarBuilders(
-                        dowBuilder: (context, day) {
-                          if (day.weekday == 7) {
-                            return Center(child: Text('sun'.tr(), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)));
-                          } else if (day.weekday == 6) {
-                            return Center(child: Text('sat'.tr(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)));
-                          } else {
-                            final text = ['mon'.tr(), 'tue'.tr(), 'wed'.tr(), 'thu'.tr(), 'fri'.tr()][day.weekday - 1];
-                            return Center(child: Text(text, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)));
-                          }
-                        },
-                        defaultBuilder: (context, day, focusedDay) {
-                          bool isSelected = isSameDay(_selectedDay, day);
-                          return BuildSplitCell(
-                            day: day,
-                            textColor: day.weekday == 7 ? Colors.red.shade700 : (day.weekday == 6 ? Colors.blue.shade700 : Colors.black87),
-                            barBgColor: Colors.grey.shade100,
-                            isSelected: isSelected,
-                            data: _calendarData[_normalizeDate(day)],
-                            showMemo: _showMemoWithImage,
-                          );
-                        },
-                        todayBuilder: (context, day, focusedDay) {
-                          bool isSelected = isSameDay(_selectedDay, day);
-                          return BuildSplitCell(
-                            day: day,
-                            textColor: Colors.blue.shade900,
-                            barBgColor: isSelected ? Colors.grey.shade100 : Colors.blue.shade50,
-                            isToday: true,
-                            isSelected: isSelected,
-                            data: _calendarData[_normalizeDate(day)],
-                            showMemo: _showMemoWithImage,
-                          );
-                        },
-                        outsideBuilder: (context, day, focusedDay) {
-                          return BuildSplitCell(
-                            day: day,
-                            textColor: Colors.grey.shade400,
-                            barBgColor: Colors.grey.shade100,
-                            isOutside: true,
-                            showMemo: _showMemoWithImage,
-                            data: _calendarData[_normalizeDate(day)],
-                          );
-                        },
-                        selectedBuilder: (context, day, focusedDay) {
-                          return BuildSplitCell(
-                            day: day,
-                            textColor: day.weekday == 7 ? Colors.red.shade700 : (day.weekday == 6 ? Colors.blue.shade700 : Colors.black87),
-                            barBgColor: Colors.grey.shade100,
-                            isSelected: true,
-                            isToday: isSameDay(DateTime.now(), day),
-                            data: _calendarData[_normalizeDate(day)],
-                            showMemo: _showMemoWithImage,
-                          );
-                        },  
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 100),
+                          child: TableCalendar(
+                            availableGestures:
+                                AvailableGestures.horizontalSwipe,
+                            firstDay: DateTime.utc(2020, 1, 1),
+                            lastDay: DateTime.utc(2030, 12, 31),
+                            focusedDay: _focusedDay,
+                            selectedDayPredicate: (day) =>
+                                isSameDay(_selectedDay, day),
+                            onDaySelected: (selectedDay, focusedDay) {
+                              setState(() {
+                                _selectedDay = selectedDay;
+                                _focusedDay = focusedDay;
+                              });
+                            },
+
+                            // 달력 상단 년/월 헤더를 클릭하면 무조건 오늘 날짜가 있는 달로 복귀!
+                            onHeaderTapped: (focusedDay) {
+                              setState(() {
+                                _focusedDay = DateTime.now();
+                              });
+                            },
+
+                            onDayLongPressed: (selectedDay, focusedDay) {
+                              setState(() {
+                                _selectedDay = selectedDay;
+                                _focusedDay = focusedDay;
+                              });
+                              final normalizedDate = _normalizeDate(
+                                selectedDay,
+                              );
+
+                              showEntryDialog(
+                                context: context,
+                                date: selectedDay,
+                                existingData: _calendarData[normalizedDate],
+                                onSave: (newData) async {
+                                  // 1. 💾 다이얼로그가 넘겨준 영구 복사본 데이터를 Isar DB에 확실히 저장합니다.
+                                  await IsarDbService.instance.saveCellData(
+                                    newData,
+                                  );
+
+                                  // 2. 🔄 가짜 객체로 화면을 때우지 말고, DB 서랍장에서 진짜 최신 데이터를 통째로 새로고침합니다!
+                                  await _loadAllCalendarData();
+                                },
+                              );
+                            },
+
+                            rowHeight: (() {
+                              final double cellWidth =
+                                  (MediaQuery.of(context).size.width - 24) / 7;
+                              final double imageHeight = cellWidth * 1.3;
+                              return imageHeight + 20;
+                            })(),
+
+                            daysOfWeekHeight: 30,
+
+                            headerStyle: const HeaderStyle(
+                              formatButtonVisible: false,
+                              titleCentered: true,
+                              titleTextStyle: TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              leftChevronIcon: Icon(
+                                Icons.chevron_left,
+                                color: Colors.black,
+                              ),
+                              rightChevronIcon: Icon(
+                                Icons.chevron_right,
+                                color: Colors.black,
+                              ),
+                              headerPadding: EdgeInsets.symmetric(
+                                vertical: 0.0,
+                              ),
+                            ),
+                            calendarBuilders: CalendarBuilders(
+                              dowBuilder: (context, day) {
+                                if (day.weekday == 7) {
+                                  return Center(
+                                    child: Text(
+                                      'sun'.tr(),
+                                      style: const TextStyle(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  );
+                                } else if (day.weekday == 6) {
+                                  return Center(
+                                    child: Text(
+                                      'sat'.tr(),
+                                      style: const TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  final text = [
+                                    'mon'.tr(),
+                                    'tue'.tr(),
+                                    'wed'.tr(),
+                                    'thu'.tr(),
+                                    'fri'.tr(),
+                                  ][day.weekday - 1];
+                                  return Center(
+                                    child: Text(
+                                      text,
+                                      style: const TextStyle(
+                                        color: Colors.black87,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              defaultBuilder: (context, day, focusedDay) {
+                                bool isSelected = isSameDay(_selectedDay, day);
+                                return BuildSplitCell(
+                                  day: day,
+                                  textColor: day.weekday == 7
+                                      ? Colors.red.shade700
+                                      : (day.weekday == 6
+                                            ? Colors.blue.shade700
+                                            : Colors.black87),
+                                  barBgColor: Colors.grey.shade100,
+                                  isSelected: isSelected,
+                                  data: _calendarData[_normalizeDate(day)],
+                                  showMemo: _showMemoWithImage,
+                                );
+                              },
+                              todayBuilder: (context, day, focusedDay) {
+                                bool isSelected = isSameDay(_selectedDay, day);
+                                return BuildSplitCell(
+                                  day: day,
+                                  textColor: Colors.blue.shade900,
+                                  barBgColor: isSelected
+                                      ? Colors.grey.shade100
+                                      : Colors.blue.shade50,
+                                  isToday: true,
+                                  isSelected: isSelected,
+                                  data: _calendarData[_normalizeDate(day)],
+                                  showMemo: _showMemoWithImage,
+                                );
+                              },
+                              outsideBuilder: (context, day, focusedDay) {
+                                return BuildSplitCell(
+                                  day: day,
+                                  textColor: Colors.grey.shade400,
+                                  barBgColor: Colors.grey.shade100,
+                                  isOutside: true,
+                                  showMemo: _showMemoWithImage,
+                                  data: _calendarData[_normalizeDate(day)],
+                                );
+                              },
+                              selectedBuilder: (context, day, focusedDay) {
+                                return BuildSplitCell(
+                                  day: day,
+                                  textColor: day.weekday == 7
+                                      ? Colors.red.shade700
+                                      : (day.weekday == 6
+                                            ? Colors.blue.shade700
+                                            : Colors.black87),
+                                  barBgColor: Colors.grey.shade100,
+                                  isSelected: true,
+                                  isToday: isSameDay(DateTime.now(), day),
+                                  data: _calendarData[_normalizeDate(day)],
+                                  showMemo: _showMemoWithImage,
+                                );
+                              },
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }
 
-class BottomAlignedAppBar extends StatelessWidget implements PreferredSizeWidget {
+class BottomAlignedAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
   final String title;
   final bool showMemoWithImage;
   final VoidCallback onTogglePressed;
-  final VoidCallback onSavePressed; 
+  final VoidCallback onSavePressed;
 
   const BottomAlignedAppBar({
     super.key,
     required this.title,
     required this.showMemoWithImage,
     required this.onTogglePressed,
-    required this.onSavePressed, 
+    required this.onSavePressed,
   });
 
   @override
@@ -283,33 +402,39 @@ class BottomAlignedAppBar extends StatelessWidget implements PreferredSizeWidget
                 ),
               ),
               const Spacer(),
-              
+
               Transform.translate(
                 offset: const Offset(0, 1.0),
                 child: GestureDetector(
-                  onTap: onSavePressed, 
+                  onTap: onSavePressed,
                   behavior: HitTestBehavior.opaque,
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 10),
                     child: Icon(
-                      Icons.download, 
+                      Icons.download,
                       color: Colors.black87,
                       size: 26.0,
                     ),
                   ),
                 ),
               ),
-              
+
               Transform.translate(
                 offset: const Offset(0, 4.0),
                 child: GestureDetector(
                   onTap: onTogglePressed,
-                  behavior: HitTestBehavior.opaque, 
+                  behavior: HitTestBehavior.opaque,
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 0, left: 8, right: 0), 
+                    padding: const EdgeInsets.only(
+                      bottom: 0,
+                      left: 8,
+                      right: 0,
+                    ),
                     child: Icon(
                       showMemoWithImage ? Icons.toggle_on : Icons.toggle_off,
-                      color: showMemoWithImage ? const Color.fromARGB(255, 77, 79, 82) : Colors.grey,
+                      color: showMemoWithImage
+                          ? const Color.fromARGB(255, 77, 79, 82)
+                          : Colors.grey,
                       size: 32.0,
                     ),
                   ),

@@ -7,12 +7,24 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p; // 💡 파일명 연산을 위해 추가
 
-const englishMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const englishMonths = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
-// ==========================================
-// 📄 [1] 메인 다이얼로그 실행 함수 (외부 호출용)
-// ==========================================
 void showEntryDialog({
   required BuildContext context,
   required DateTime date,
@@ -29,9 +41,6 @@ void showEntryDialog({
   );
 }
 
-// ==========================================
-// 🏛️ [2] 다이얼로그 메인 콘텐츠 위젯 (상태 관리)
-// ==========================================
 class _EntryDialogContent extends StatefulWidget {
   final DateTime date;
   final CalendarCellData? existingData;
@@ -50,26 +59,46 @@ class _EntryDialogContent extends StatefulWidget {
 class _EntryDialogContentState extends State<_EntryDialogContent> {
   late final TextEditingController _memoController;
   final ImagePicker _picker = ImagePicker();
+
+  // 💡 사용자가 새로 고른 사진을 담는 변수
   File? _tempImage;
   List<String> _tempEmotions = [];
+
+  // 💡 기존에 저장되어 있던 파일명을 안전하게 추적하기 위한 변수
+  String? _initialFileName;
 
   @override
   void initState() {
     super.initState();
-    _memoController = TextEditingController(text: widget.existingData?.memo ?? '');
-    _tempImage = widget.existingData?.image;
+    _memoController = TextEditingController(
+      text: widget.existingData?.memo ?? '',
+    );
     _tempEmotions = List<String>.from(widget.existingData?.emotions ?? []);
 
-    // 📱 다이얼로그 진입 시 세로 모드 고정
+    // 만약 기존 데이터에 파일 경로/명이 있다면 파일명만 쏙 발라냅니다.
+    if (widget.existingData != null && widget.existingData!.imagePath != null) {
+      _initialFileName = widget.existingData!.imagePath!.split('/').last;
+    }
+
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
   }
 
+  // 💡 [달력과 동일한 실시간 주소 조립기] 팝업창이 열릴 때 기존 사진을 올바른 경로로 불러옵니다.
+  Future<File?> _getInitialImageFile() async {
+    if (_initialFileName == null || _initialFileName!.isEmpty) return null;
+    final Directory appDir = await getApplicationDocumentsDirectory();
+    final File file = File('${appDir.path}/$_initialFileName');
+    if (await file.exists()) {
+      return file;
+    }
+    return null;
+  }
+
   @override
   void dispose() {
-    // 🔄 다이얼로그 해제 시 화면 회전 잠금 풀기
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -80,7 +109,6 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
     super.dispose();
   }
 
-  // 감정 선택 토글 로직
   void _toggleEmotion(String emotionName) {
     setState(() {
       if (_tempEmotions.contains(emotionName)) {
@@ -92,7 +120,6 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
     });
   }
 
-  // 📸 비즈니스 로직: 사진 피커 호출 및 상태 갱신
   Future<void> _pickAndCropImage() async {
     final File? selectedFile = await _showPhotoPickerBottomSheet(
       context: context,
@@ -101,7 +128,7 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
     );
     if (selectedFile != null) {
       setState(() {
-        _tempImage = selectedFile;
+        _tempImage = selectedFile; // 새로 사진을 고르면 여기에 담김
       });
     }
   }
@@ -118,39 +145,35 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildMemoTextField(),      // 📝 1. 메모 입력 필드
+              _buildMemoTextField(),
               const SizedBox(height: 16),
-              _buildEmotionSection(),     // 🎨 2. 감정 선택 영역 (긍정/부정)
+              _buildEmotionSection(),
               const SizedBox(height: 20),
-              _buildPhotoSelectionArea(), // 📸 3. 1:1.3 종횡비 사진 영역
+              _buildPhotoSelectionArea(),
             ],
           ),
         ),
       ),
-      actions: _buildActionButtons(),     // 🤝 4. 하단 액션 버튼 영역
+      actions: _buildActionButtons(),
     );
   }
 
-  // ==========================================
-  // 🛠️ 가독성을 높이기 위해 분리한 세부 UI 위젯들
-  // ==========================================
-
-  // 1. 타이틀 영역
   Widget _buildDialogTitle() {
-    final titleText = 'date_record_title'.tr(namedArgs: {
-      'monthName': context.locale.languageCode == 'en'
-          ? englishMonths[widget.date.month - 1]
-          : widget.date.month.toString(),
-      'month': widget.date.month.toString(),
-      'day': widget.date.day.toString(),
-    });
+    final titleText = 'date_record_title'.tr(
+      namedArgs: {
+        'monthName': context.locale.languageCode == 'en'
+            ? englishMonths[widget.date.month - 1]
+            : widget.date.month.toString(),
+        'month': widget.date.month.toString(),
+        'day': widget.date.day.toString(),
+      },
+    );
     return Text(
       titleText,
       style: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
     );
   }
 
-  // 2. 메모 입력 필드
   Widget _buildMemoTextField() {
     return TextField(
       controller: _memoController,
@@ -159,82 +182,120 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
     );
   }
 
-  // 3. 감정 선택 전체 섹션
   Widget _buildEmotionSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'pick_feelings'.tr(),
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey),
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
+          ),
         ),
         const SizedBox(height: 12),
-        _buildHorizontalEmotionList(positiveEmotions), // 긍정 감정 행
+        _buildHorizontalEmotionList(positiveEmotions),
         const SizedBox(height: 16),
-        _buildHorizontalEmotionList(negativeEmotions), // 부정 감정 행
+        _buildHorizontalEmotionList(negativeEmotions),
       ],
     );
   }
 
-  // 3-1. 감정 리스트용 가로 스크롤 로우
   Widget _buildHorizontalEmotionList(List<EmotionData> emotions) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: emotions.map((e) {
-          final index = _tempEmotions.indexOf(e.name);
-          return Padding(
-            padding: const EdgeInsets.only(right: 5),
-            child: _EmotionButton(
-              emotion: e,
-              selectIndex: index,
-              onTap: () => _toggleEmotion(e.name),
-            ),
-          );
-        }).toList(),
+    return SizedBox(
+      height: 75,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: emotions.map((e) {
+            final index = _tempEmotions.indexOf(e.name);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: _EmotionButton(
+                emotion: e,
+                selectIndex: index,
+                onTap: () => _toggleEmotion(e.name),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
-  // 4. 사진 선택 영역 (사진 없을 땐 예쁘게 채우고, 있을 땐 1:1.3 비율로!)
+  // 💡 [수리 핵심 부위] 새로 고른 사진이 있으면 그걸 보여주고, 없으면 기존 사진을 실시간 조립해서 띄웁니다!
   Widget _buildPhotoSelectionArea() {
-    return GestureDetector(
-      onTap: _pickAndCropImage,
-      child: _tempImage != null
-          ? AspectRatio(
-              aspectRatio: 1 / 1.3, // 📸 사진이 있을 때는 크롭 비율 그대로!
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12), // 라운딩도 살짝 더 부드럽게
-                  border: Border.all(color: Colors.grey.shade300),
+    if (_tempImage != null) {
+      // 1. 방금 갤러리에서 새로 고르고 크롭한 사진이 있을 때
+      return GestureDetector(
+        onTap: _pickAndCropImage,
+        child: AspectRatio(
+          aspectRatio: 1 / 1.3,
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: _buildSelectedPhotoStack(_tempImage!),
+          ),
+        ),
+      );
+    } else {
+      // 2. 새로 고른 사진이 없을 때 -> 기존에 저장된 사진이 있는지 실시간 체크
+      return FutureBuilder<File?>(
+        future: _getInitialImageFile(),
+        builder: (context, snapshot) {
+          final File? savedFile = snapshot.data;
+
+          if (savedFile != null) {
+            return GestureDetector(
+              onTap: _pickAndCropImage,
+              child: AspectRatio(
+                aspectRatio: 1 / 1.3,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: _buildSelectedPhotoStack(savedFile),
                 ),
-                child: _buildSelectedPhotoStack(),
               ),
-            )
-          : Container(
-              // 📐 사진이 없을 때 다이얼로그를 스크롤 없이 예쁘게 채우는 황금 높이
-              height: 145, 
+            );
+          }
+
+          // 3. 사진이 아예 등록되지 않은 상태일 때 (기본 빈 화면)
+          return GestureDetector(
+            onTap: _pickAndCropImage,
+            child: Container(
+              height: 145,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.grey[50], // 살짝 더 밝고 감성적인 배경색
+                color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
+                border: Border.all(color: Colors.grey.shade200),
               ),
               child: _buildEmptyPhotoIcon(),
             ),
-    );
+          );
+        },
+      );
+    }
   }
 
-  // 4-1. 선택된 사진이 있을 때 표시되는 스택 (이미지 + 삭제 버튼)
-  Widget _buildSelectedPhotoStack() {
+  Widget _buildSelectedPhotoStack(File targetFile) {
     return Stack(
       children: [
         Positioned.fill(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.file(_tempImage!, fit: BoxFit.cover),
+            child: Image.file(targetFile, fit: BoxFit.cover),
           ),
         ),
         Positioned(
@@ -243,7 +304,8 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
           child: GestureDetector(
             onTap: () {
               setState(() {
-                _tempImage = null; // 사진 제거
+                _tempImage = null;
+                _initialFileName = null; // 기존 사진도 날림 처리
               });
             },
             child: Container(
@@ -260,31 +322,28 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
     );
   }
 
-  // 4-2. 사진이 없을 때 표시되는 세로형 감성 아이콘 + 텍스트
   Widget _buildEmptyPhotoIcon() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
-          Icons.add_photo_alternate_outlined, // 조금 더 세련된 사진 추가 아이콘
-          size: 32, 
+          Icons.add_photo_alternate_outlined,
+          size: 32,
           color: Colors.grey[400],
         ),
         const SizedBox(height: 10),
         Text(
           'Select Photo',
           style: TextStyle(
-            color: Colors.grey[500], 
-            fontSize: 13, 
+            color: Colors.grey[500],
+            fontSize: 13,
             fontWeight: FontWeight.w500,
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
     );
   }
 
-  // 5. 하단 취소 및 저장 버튼 영역
   List<Widget> _buildActionButtons() {
     return [
       TextButton(
@@ -292,14 +351,48 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
         child: Text('cancel'.tr()),
       ),
       ElevatedButton(
-        onPressed: () {
+        onPressed: () async {
+          File? finalSavedImage;
+
+          // 1. 만약 사용자가 사진을 '새로 골랐다면' 영구 보관소로 복사 이사를 보냅니다.
+          if (_tempImage != null) {
+            try {
+              final appDir = await getApplicationDocumentsDirectory();
+              final String timestamp = DateTime.now().millisecondsSinceEpoch
+                  .toString();
+              final String permanentPath =
+                  '${appDir.path}/diary_$timestamp.jpg';
+
+              finalSavedImage = await _tempImage!.copy(permanentPath);
+            } catch (e) {
+              debugPrint("📸 [DIARY_SAVE] Copy Error: $e");
+              finalSavedImage = _tempImage;
+            }
+          }
+          // 2. 사진을 새로 고르지 않았지만, 기존 사진 파일명이 살아있다면 실시간 조립한 경로를 유지합니다.
+          else if (_initialFileName != null) {
+            final appDir = await getApplicationDocumentsDirectory();
+            finalSavedImage = File('${appDir.path}/$_initialFileName');
+          }
+
           final newData = CalendarCellData(
             memo: _memoController.text,
-            image: _tempImage,
+            image: finalSavedImage,
             emotions: _tempEmotions,
           );
+
+          newData.date = DateTime(
+            widget.date.year,
+            widget.date.month,
+            widget.date.day,
+          );
+
+          if (widget.existingData != null) {
+            newData.id = widget.existingData!.id;
+          }
+
           widget.onSave(newData);
-          Navigator.pop(context);
+          if (context.mounted) Navigator.pop(context);
         },
         child: Text('save'.tr()),
       ),
@@ -307,9 +400,6 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
   }
 }
 
-// ==========================================
-// 🎨 [3] 감정 버튼 컴포넌트 위젯 (UI 단독 분리)
-// ==========================================
 class _EmotionButton extends StatelessWidget {
   final EmotionData emotion;
   final int selectIndex;
@@ -338,7 +428,9 @@ class _EmotionButton extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isSelected ? emotion.color.withValues(alpha: 0.2) : Colors.grey[100],
+                  color: isSelected
+                      ? emotion.color.withValues(alpha: 0.2)
+                      : Colors.grey[100],
                   border: Border.all(
                     color: isSelected ? emotion.color : Colors.grey.shade300,
                     width: isSelected ? 2.0 : 1.0,
@@ -355,11 +447,21 @@ class _EmotionButton extends StatelessWidget {
                   top: 0,
                   child: Container(
                     padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(color: emotion.color, shape: BoxShape.circle),
-                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                    decoration: BoxDecoration(
+                      color: emotion.color,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 14,
+                      minHeight: 14,
+                    ),
                     child: Text(
                       '${selectIndex + 1}',
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -381,17 +483,30 @@ class _EmotionButton extends StatelessWidget {
   }
 }
 
-// ==========================================
-// 📸 [4] 사진첩 및 크롭 관련 비즈니스 로직 함수들
-// ==========================================
 Future<List<AssetEntity>> _fetchPhotosByDate(DateTime selectedDate) async {
   await PhotoManager.requestPermissionExtend();
 
-  final DateTime startTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 4, 0, 0);
-  final DateTime endTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day + 1, 3, 59, 59);
+  final DateTime startTime = DateTime(
+    selectedDate.year,
+    selectedDate.month,
+    selectedDate.day,
+    4,
+    0,
+    0,
+  );
+  final DateTime endTime = DateTime(
+    selectedDate.year,
+    selectedDate.month,
+    selectedDate.day + 1,
+    3,
+    59,
+    59,
+  );
 
   final FilterOptionGroup filterOption = FilterOptionGroup(
-    imageOption: const FilterOption(sizeConstraint: SizeConstraint(minWidth: 10, minHeight: 10)),
+    imageOption: const FilterOption(
+      sizeConstraint: SizeConstraint(minWidth: 10, minHeight: 10),
+    ),
     createTimeCond: DateTimeCond(min: startTime, max: endTime),
     orders: [const OrderOption(type: OrderOptionType.createDate, asc: false)],
   );
@@ -414,14 +529,19 @@ Future<File?> _showPhotoPickerBottomSheet({
     context: context,
     backgroundColor: Colors.white,
     isScrollControlled: true,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
     builder: (context) {
-      final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-      
+      final isLandscape =
+          MediaQuery.of(context).orientation == Orientation.landscape;
+
       return SafeArea(
         child: Container(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * (isLandscape ? 0.85 : 0.45),
+            maxHeight:
+                MediaQuery.of(context).size.height *
+                (isLandscape ? 0.85 : 0.45),
           ),
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -431,18 +551,28 @@ Future<File?> _showPhotoPickerBottomSheet({
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Today\'s Photos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Today\'s Photos',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   TextButton.icon(
                     onPressed: () async {
-                      final XFile? pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                      final XFile? pickedFile = await picker.pickImage(
+                        source: ImageSource.gallery,
+                      );
                       if (pickedFile != null && context.mounted) {
                         final File? cropped = await _cropImage(pickedFile.path);
                         await Future.delayed(Duration.zero);
-                        if (cropped != null && context.mounted) Navigator.pop(context, cropped);
+                        if (cropped != null && context.mounted) {
+                          Navigator.pop(context, cropped);
+                        }
                       }
                     },
                     icon: const Icon(Icons.photo_library, size: 18),
-                    label: const Text('All Photos', style: TextStyle(fontSize: 14)),
+                    label: const Text(
+                      'All Photos',
+                      style: TextStyle(fontSize: 14),
+                    ),
                   ),
                 ],
               ),
@@ -481,28 +611,36 @@ Future<File?> _showPhotoPickerBottomSheet({
                             if (file != null && context.mounted) {
                               final File? cropped = await _cropImage(file.path);
                               await Future.delayed(Duration.zero);
-                              if (cropped != null && context.mounted) Navigator.pop(context, cropped);
+                              if (cropped != null && context.mounted) {
+                                Navigator.pop(context, cropped);
+                              }
                             }
                           },
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: FutureBuilder<dynamic>(
-                              future: entity.thumbnailDataWithSize(const ThumbnailSize.square(200)),
+                              future: entity.thumbnailDataWithSize(
+                                const ThumbnailSize.square(200),
+                              ),
                               builder: (context, byteSnapshot) {
-                                if (byteSnapshot.connectionState == ConnectionState.waiting) {
+                                if (byteSnapshot.connectionState ==
+                                    ConnectionState.waiting) {
                                   return Container(
                                     color: Colors.grey[100],
                                     child: const Center(
                                       child: SizedBox(
                                         width: 20,
                                         height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
                                       ),
                                     ),
                                   );
                                 }
                                 final bytes = byteSnapshot.data;
-                                if (bytes == null) return Container(color: Colors.grey[200]);
+                                if (bytes == null)
+                                  return Container(color: Colors.grey[200]);
                                 return Image.memory(bytes, fit: BoxFit.cover);
                               },
                             ),
