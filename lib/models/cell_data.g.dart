@@ -15,7 +15,7 @@ extension GetCalendarCellDataCollection on Isar {
 
 const CalendarCellDataSchema = CollectionSchema(
   name: r'CalendarCellData',
-  id: -9209691735926997099,
+  id: -920969173592,
   properties: {
     r'date': PropertySchema(
       id: 0,
@@ -50,7 +50,7 @@ const CalendarCellDataSchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'date': IndexSchema(
-      id: -7552997827385218417,
+      id: -755299782738,
       name: r'date',
       unique: true,
       replace: true,

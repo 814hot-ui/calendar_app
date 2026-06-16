@@ -28,8 +28,9 @@ class BuildSplitCell extends StatelessWidget {
 
   // 💡 [실시간 주소 조립 나침반] Isar에 저장된 파일 이름과 현재 iOS가 실시간 발급한 진짜 방 주소를 합쳐서 파일을 낚아옵니다.
   Future<File?> _getRealImageFile() async {
-    if (data == null || data!.imagePath == null || data!.imagePath!.isEmpty)
+    if (data == null || data!.imagePath == null || data!.imagePath!.isEmpty) {
       return null;
+    }
 
     // 만약 예전 주소가 통째로 남아있는 찌꺼기라면 파일 이름만 강제로 발라냅니다.
     final String pureFileName = data!.imagePath!.split('/').last;
@@ -152,8 +153,9 @@ class BuildSplitCell extends StatelessWidget {
                                 fontSize: 9,
                                 color: Colors.black87,
                                 fontWeight: FontWeight.w500,
+                                height: 1.1, // 💡 두 줄이 되었을 때 줄간격을 살짝 콤팩트하게 조절
                               ),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
                             ),

@@ -8,7 +8,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p; // 💡 파일명 연산을 위해 추가
+// 💡 파일명 연산을 위해 추가
 
 const englishMonths = [
   'Jan',
@@ -195,34 +195,29 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
           ),
         ),
         const SizedBox(height: 12),
-        _buildHorizontalEmotionList(positiveEmotions),
+        _buildEmotionGridList(positiveEmotions),
         const SizedBox(height: 16),
-        _buildHorizontalEmotionList(negativeEmotions),
+        _buildEmotionGridList(negativeEmotions),
       ],
     );
   }
 
-  Widget _buildHorizontalEmotionList(List<EmotionData> emotions) {
-    return SizedBox(
-      height: 75,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: emotions.map((e) {
-            final index = _tempEmotions.indexOf(e.name);
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: _EmotionButton(
-                emotion: e,
-                selectIndex: index,
-                onTap: () => _toggleEmotion(e.name),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
+  Widget _buildEmotionGridList(List<EmotionData> emotions) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween, // 5개 이모티콘 사이 간격을 일정하게 배분
+      children: emotions.map((e) {
+        final index = _tempEmotions.indexOf(e.name);
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2), // 양옆 여백을 최소화하여 좁은 화면 방어
+            child: _EmotionButton(
+              emotion: e,
+              selectIndex: index,
+              onTap: () => _toggleEmotion(e.name),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -392,6 +387,7 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
           }
 
           widget.onSave(newData);
+          // ignore: use_build_context_synchronously
           if (context.mounted) Navigator.pop(context);
         },
         child: Text('save'.tr()),
@@ -471,6 +467,8 @@ class _EmotionButton extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             emotion.name,
+            maxLines: 1,       // 💡 무조건 한 줄로만 나오게 제한
+            softWrap: false,   // 💡 자동 줄바꿈 금지
             style: TextStyle(
               fontSize: 10,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -639,8 +637,9 @@ Future<File?> _showPhotoPickerBottomSheet({
                                   );
                                 }
                                 final bytes = byteSnapshot.data;
-                                if (bytes == null)
+                                if (bytes == null) {
                                   return Container(color: Colors.grey[200]);
+                                }
                                 return Image.memory(bytes, fit: BoxFit.cover);
                               },
                             ),
@@ -662,6 +661,8 @@ Future<File?> _showPhotoPickerBottomSheet({
 Future<File?> _cropImage(String sourcePath) async {
   final croppedFile = await ImageCropper().cropImage(
     sourcePath: sourcePath,
+    maxWidth: 1080,   // 가로 최대 1080px
+    maxHeight: 1404,  // 세로 최대 1404px (1:1.3 비율을 고려한 해상도)
     aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1.3),
     uiSettings: [
       AndroidUiSettings(
