@@ -67,15 +67,18 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
   // 💡 기존에 저장되어 있던 파일명을 안전하게 추적하기 위한 변수
   String? _initialFileName;
 
-  @override
+ @override
   void initState() {
     super.initState();
     _memoController = TextEditingController(
       text: widget.existingData?.memo ?? '',
     );
-    _tempEmotions = List<String>.from(widget.existingData?.emotions ?? []);
+    
+    // 💡 [안전 보완] 데이터의 감정을 소문자로 바꾸고 앞뒤 공백을 싹 제거하여 저장합니다.
+    _tempEmotions = (widget.existingData?.emotions ?? [])
+        .map((e) => e.toString().toLowerCase().trim())
+        .toList();
 
-    // 만약 기존 데이터에 파일 경로/명이 있다면 파일명만 쏙 발라냅니다.
     if (widget.existingData != null && widget.existingData!.imagePath != null) {
       _initialFileName = widget.existingData!.imagePath!.split('/').last;
     }
@@ -109,13 +112,12 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
     super.dispose();
   }
 
-  void _toggleEmotion(String emotionName) {
+  void _toggleEmotion(String emotionId) { // 💡 인자를 name 대신 id로 받음
     setState(() {
-      if (_tempEmotions.contains(emotionName)) {
-        _tempEmotions.remove(emotionName);
+      if (_tempEmotions.contains(emotionId)) {
+        _tempEmotions.remove(emotionId); // 이미 있으면 제거
       } else {
-        if (_tempEmotions.length >= 3) return;
-        _tempEmotions.add(emotionName);
+        _tempEmotions.add(emotionId);    // 없으면 id 추가
       }
     });
   }
@@ -202,18 +204,23 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
     );
   }
 
-  Widget _buildEmotionGridList(List<EmotionData> emotions) {
+Widget _buildEmotionGridList(List<EmotionData> emotions) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween, // 5개 이모티콘 사이 간격을 일정하게 배분
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: emotions.map((e) {
-        final index = _tempEmotions.indexOf(e.name);
+        // 💡 [안전 보완] DB에서 온 데이터와 현재 고유 id의 대소문자/공백 차이를 완벽히 방어하며 인덱스를 찾습니다.
+        final targetId = e.id.toString().toLowerCase().trim();
+        final index = _tempEmotions.indexWhere(
+          (savedId) => savedId.toString().toLowerCase().trim() == targetId
+        );
+        
         return Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2), // 양옆 여백을 최소화하여 좁은 화면 방어
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             child: _EmotionButton(
               emotion: e,
               selectIndex: index,
-              onTap: () => _toggleEmotion(e.name),
+              onTap: () => _toggleEmotion(targetId), // 소문자 정제된 id 전송
             ),
           ),
         );
@@ -347,47 +354,142 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
       ),
       ElevatedButton(
         onPressed: () async {
+          // 📝 [로그 1] 세이브 버튼이 눌렸을 때 현재 상태 파악
+          // debugPrint("📱 [DIARY_SAVE_START] ===== 저장 프로세스 시작 =====");
+          // debugPrint("📱 [DIARY_SAVE_START] 기존 데이터 존재 여부: ${widget.existingData != null}");
+          // if (widget.existingData != null) {
+          //   debugPrint("📱 [DIARY_SAVE_START] 기존 DB ID: ${widget.existingData!.id}");
+          //   debugPrint("📱 [DIARY_SAVE_START] 기존 DB 저장된 사진경로: ${widget.existingData!.imagePath}");
+          // }
+          // debugPrint("📱 [DIARY_SAVE_START] 현재 선택된 임시사진(_tempImage) 존재여부: ${_tempImage != null}");
+          // debugPrint("📱 [DIARY_SAVE_START] 현재 유지중인 파일명(_initialFileName): $_initialFileName");
+
+          final List<String> realUserEmotions = _tempEmotions
+              .where((e) => e.toString().toLowerCase().trim() != '_delete_')
+              .toList();
+
+          final bool isMemoEmpty = _memoController.text.trim().isEmpty;
+          final bool isEmotionEmpty = realUserEmotions.isEmpty;
+          final bool isImageEmpty = (_tempImage == null && _initialFileName == null);
+
+          debugPrint("📱 [DIARY_CONDITIONS] 빈값 검사 결과 -> 메모 빔: $isMemoEmpty, 감정 빔: $isEmotionEmpty, 사진 빔: $isImageEmpty");
+
+          // -------------------------------------------------------------
+          // 1. 🗑️ [케이스 A] 그 날짜 데이터 전체를 완전히 지우는 경우 (메모, 감정, 사진 모두 전멸)
+          // -------------------------------------------------------------
+          if (isMemoEmpty && isEmotionEmpty && isImageEmpty) {
+            // debugPrint("🚨 [DIARY_BRANCH] 👉 [케이스 A] 전체 삭제 조건문 진입!");
+            if (widget.existingData != null) {
+              if (widget.existingData!.imagePath != null && 
+                  widget.existingData!.imagePath!.isNotEmpty) {
+                try {
+                  final oldFile = File(widget.existingData!.imagePath!);
+                  final bool exists = await oldFile.exists();
+                  // debugPrint("🚨 [물리삭제_A] 실제 파일이 기기에 존재하나요?: $exists");
+                  
+                  if (exists) {
+                    await oldFile.delete();
+                    // debugPrint("🗑️ [물리삭제_A] 성공! 기기 내부 그림 파일 삭제 완료: ${widget.existingData!.imagePath}");
+                  }
+                } catch (e) {
+                  // debugPrint("🔥 [물리삭제_A] 파일 에러 발생: $e");
+                }
+              }
+
+              final deleteSignalData = CalendarCellData(
+                id: widget.existingData!.id,     // ⭕ 괄호 안으로 이동
+                date: widget.existingData!.date,   // ⭕ 괄호 안으로 이동
+                memo: '',
+                emotions: ['_DELETE_'],
+                imagePath: null,                 // ⭕ 필수값 추가
+              );
+
+              widget.onSave(deleteSignalData);
+            } else {
+              // debugPrint("🚨 [DIARY_BRANCH] 기존 데이터가 없던 날이라 삭제신호 없이 종료");
+              if (context.mounted) Navigator.pop(context);
+              return;
+            }
+            if (context.mounted) Navigator.pop(context);
+            return;
+          }
+
+          // -------------------------------------------------------------
+          // 2. 📸 [케이스 B] 일기(글/감정)는 놔두고 "사진만" 쏙 지우고 저장한 경우
+          // -------------------------------------------------------------
+          // debugPrint("📱 [DIARY_BRANCH] 케이스 B 진입 전 검증 조건문 작동중...");
+          if (widget.existingData != null && 
+              widget.existingData!.imagePath != null && 
+              widget.existingData!.imagePath!.isNotEmpty && 
+              _tempImage == null && 
+              _initialFileName == null) {
+            
+            // debugPrint("🚨 [DIARY_BRANCH] 👉 [케이스 B] 사진만 삭제 조건문 충족되어 진입!");
+            try {
+              final oldFile = File(widget.existingData!.imagePath!);
+              final bool exists = await oldFile.exists();
+              // debugPrint("🚨 [물리삭제_B] 실제 파일이 기기에 존재하나요?: $exists");
+
+              if (exists) {
+                await oldFile.delete();
+                // debugPrint("🗑️ [물리삭제_B] 성공! widget.existingData 경로로 물리 파일 파쇄 완료: ${widget.existingData!.imagePath}");
+              } else {
+                // debugPrint("⚠️ [물리삭제_B] 경로 텍스트는 있는데, 실제 기기 폴더 안에 파일이 실종된 상태입니다.");
+              }
+            } catch (e) {
+              // debugPrint("🔥 [물리삭제_B] 파일 오류: $e");
+            }
+          } else {
+            // debugPrint("📱 [DIARY_BRANCH] 케이스 B 조건 미충족 (사진만 삭제한 게 아님)");
+          }
+
+          // -------------------------------------------------------------
+          // 🟢 3. 정상 저장 및 수정 로직 진행
+          // -------------------------------------------------------------
+          // debugPrint("📱 [DIARY_BRANCH] 👉 [일반 저장/수정] 프로세스로 진입합니다.");
           File? finalSavedImage;
 
-          // 1. 만약 사용자가 사진을 '새로 골랐다면' 영구 보관소로 복사 이사를 보냅니다.
           if (_tempImage != null) {
             try {
               final appDir = await getApplicationDocumentsDirectory();
-              final String timestamp = DateTime.now().millisecondsSinceEpoch
-                  .toString();
-              final String permanentPath =
-                  '${appDir.path}/diary_$timestamp.jpg';
+              final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+              final String permanentPath = '${appDir.path}/diary_$timestamp.jpg';
+
+              if (widget.existingData != null && 
+                  widget.existingData!.imagePath != null && 
+                  widget.existingData!.imagePath!.isNotEmpty) {
+                final oldFile = File(widget.existingData!.imagePath!);
+                if (await oldFile.exists()) {
+                  await oldFile.delete();
+                  // debugPrint("🔄 [사진교체] 새로운 사진으로 바꾸기 전, 옛날 물리 사진 파쇄 완료");
+                }
+              }
 
               finalSavedImage = await _tempImage!.copy(permanentPath);
+              // debugPrint("📸 [사진복사] 새 사진 영구 저장 완료: $permanentPath");
             } catch (e) {
-              debugPrint("📸 [DIARY_SAVE] Copy Error: $e");
+              // debugPrint("📸 [DIARY_SAVE] Copy Error: $e");
               finalSavedImage = _tempImage;
             }
           }
-          // 2. 사진을 새로 고르지 않았지만, 기존 사진 파일명이 살아있다면 실시간 조립한 경로를 유지합니다.
           else if (_initialFileName != null) {
             final appDir = await getApplicationDocumentsDirectory();
             finalSavedImage = File('${appDir.path}/$_initialFileName');
-          }
+            // debugPrint("📸 [사진유지] 기존 사진을 그대로 유지합니다: ${finalSavedImage.path}");
+          } 
 
           final newData = CalendarCellData(
+            id: widget.existingData?.id ?? 0,                     // ⭕ 추가
+            date: DateTime(widget.date.year, widget.date.month, widget.date.day), // ⭕ 추가
             memo: _memoController.text,
-            image: finalSavedImage,
-            emotions: _tempEmotions,
+            emotions: realUserEmotions,
+            imagePath: finalSavedImage?.path,                      // ⭕ 'image: finalSavedImage'를 이렇게 변경!
           );
 
-          newData.date = DateTime(
-            widget.date.year,
-            widget.date.month,
-            widget.date.day,
-          );
+          
 
-          if (widget.existingData != null) {
-            newData.id = widget.existingData!.id;
-          }
-
+          // debugPrint("📱 [DIARY_SAVE_END] 최종 전달 데이터 -> ID: ${newData.id}, 메모: ${newData.memo}, 감정: ${newData.emotions}, 사진경로: ${newData.imagePath}");
           widget.onSave(newData);
-          // ignore: use_build_context_synchronously
           if (context.mounted) Navigator.pop(context);
         },
         child: Text('save'.tr()),
@@ -465,10 +567,11 @@ class _EmotionButton extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
+          // 💡 [수정] 위젯 레벨에서 새로 개편한 translationKey에 직접 .tr()을 붙여 번역을 강제합니다!
           Text(
-            emotion.name,
-            maxLines: 1,       // 💡 무조건 한 줄로만 나오게 제한
-            softWrap: false,   // 💡 자동 줄바꿈 금지
+            emotion.translationKey.tr(), 
+            maxLines: 1,       // 무조건 한 줄로만 나오게 제한
+            softWrap: false,   // 자동 줄바꿈 금지
             style: TextStyle(
               fontSize: 10,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -560,7 +663,7 @@ Future<File?> _showPhotoPickerBottomSheet({
                       );
                       if (pickedFile != null && context.mounted) {
                         final File? cropped = await _cropImage(pickedFile.path);
-                        await Future.delayed(Duration.zero);
+                    
                         if (cropped != null && context.mounted) {
                           Navigator.pop(context, cropped);
                         }
@@ -608,7 +711,7 @@ Future<File?> _showPhotoPickerBottomSheet({
                             final File? file = await entity.file;
                             if (file != null && context.mounted) {
                               final File? cropped = await _cropImage(file.path);
-                              await Future.delayed(Duration.zero);
+                              
                               if (cropped != null && context.mounted) {
                                 Navigator.pop(context, cropped);
                               }

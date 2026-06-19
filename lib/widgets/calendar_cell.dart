@@ -32,18 +32,22 @@ class BuildSplitCell extends StatelessWidget {
       return null;
     }
 
-    // 만약 예전 주소가 통째로 남아있는 찌꺼기라면 파일 이름만 강제로 발라냅니다.
-    final String pureFileName = data!.imagePath!.split('/').last;
+    try {
+      final String pureFileName = data!.imagePath!.split('/').last;
+      final appDir = await getApplicationDocumentsDirectory();
+      final file = File('${appDir.path}/$pureFileName');
 
-    // 🏠 지금 켜진 앱의 실시간 진짜 영구보관소 주소를 알아냅니다 (iOS UUID 난수 변경 완벽 방어!)
-    final Directory appDir = await getApplicationDocumentsDirectory();
-    final String realPath = '${appDir.path}/$pureFileName';
-
-    final File file = File(realPath);
-    if (await file.exists()) {
-      return file;
+      // 💡 [핵심 보완] 주소만 맞다고 던지지 말고, 진짜 기기에 파일이 살아있는지 최종 확인!
+      if (await file.exists()) {
+        return file;
+      } else {
+        // debugPrint("⚠️ [CALENDAR_CELL] DB엔 경로가 있지만 물리 파일이 유실됨: $pureFileName");
+        return null; // 파일이 없으면 null을 주어 사진 없는 날 처리
+      }
+    } catch (e) {
+      // debugPrint("🔥 [CALENDAR_CELL] 파일 조회 중 오류 발생: $e");
+      return null;
     }
-    return null;
   }
 
   @override
@@ -84,12 +88,22 @@ class BuildSplitCell extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: data!.emotions.map((emotionName) {
+                      // 1. 대소문자 및 공백 세척
+                      var cleanId = emotionName.toString().toLowerCase().trim();
+                      
+                      // 💡 [구조 결함 방어존] 혹시 DB에 영/한이 섞여 "슬픔"이나 "stressed" 등이 그대로 남아있다면 고유 ID 규격으로 강제 맵핑해줍니다.
+                      if (cleanId == '슬픔' || cleanId == 'sad') cleanId = 'sad';
+                      if (cleanId == '분노' || cleanId == 'angry') cleanId = 'angry';
+                      if (cleanId == '스트레스' || cleanId == 'stressed') cleanId = 'stressed';
+                      // (프로젝트에 정의된 다른 감정들이 있다면 여기에 추가 가능)
+
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 0.5),
                         width: 6.5,
                         height: 6.5,
                         decoration: BoxDecoration(
-                          color: getEmotionColor(emotionName),
+                          // 정제된 고유 ID를 던져 정확한 색상을 찾아옵니다.
+                          color: getEmotionColor(cleanId),
                           shape: BoxShape.circle,
                         ),
                       );
