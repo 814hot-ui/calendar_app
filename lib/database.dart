@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
+
 part 'database.g.dart';
 
 // 💡 [감정 리스트 변환기] SQLite는 List<String>을 통째로 못 넣기 때문에, 

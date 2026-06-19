@@ -19,7 +19,7 @@
   "sat": "SAT",
   "emoticon_happy": "Happy",
   "emoticon_joy": "Joy",
-  "emoticon_love": "Love",
+  "emoticon_love": "Love",  
   "emoticon_proud": "Proud",
   "emoticon_calm": "Calm",
   "emoticon_sad": "Sad",
@@ -42,5 +42,19 @@
   "backup_import_failed": "Backup file restore failed. Error: {error}",
   "backup_no_data": "No data available for backup.",
   "backup_import_no_file": "Please select a backup file to restore.",
-  "backup_import_invalid_file": "The selected file is not a valid backup file."
+  "backup_import_invalid_file": "The selected file is not a valid backup file.",
+  "settings": {
+    "title": "Settings",
+    "section_design": "Design Customization",
+    "font_title": "Change App Font",
+    "grid_color_title": "Change Color",
+    "color_picker_title": "Select Color",
+    "section_data": "Data Management",
+    "backup_title": "Cloud Backup",
+    "backup_subtitle": "Securely back up your current diary data to Google Drive.",
+    "backup_progress": "☁️ Starting backup to Google Drive...",
+    "restore_title": "Cloud Restore & Sync",
+    "restore_subtitle": "Retrieve and overwrite with the latest data from the cloud.",
+    "restore_progress": "🔄 Synchronizing cloud data..."
+  }
 }

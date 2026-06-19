@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart'; // 💡 실시간 진짜 폴더 조회를 위해 필수!
 import '../models/cell_data.dart';
 import '../models/emotion.dart';
+import 'package:provider/provider.dart';
+import '../services/settings_manager.dart';
+
 
 class BuildSplitCell extends StatelessWidget {
   final DateTime day;
@@ -51,14 +54,28 @@ class BuildSplitCell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) {  
+    final settings = Provider.of<SettingsManager>(context);
+    
+    // 🎨 사용자가 선택한 원본 색상 바탕으로 테두리색 재추출
+    final baseColor = settings.gridLineColor;
+    final thinGridColor = baseColor.withValues(alpha: 0.2); // ⭕ 달력 모든 테두리용 선 색상
+    final todayPointColor = baseColor.withValues(alpha: 0.6); // ⭕ 오늘 날짜 강조용 진한 색상
+
+    // ⭕ [추가] 오늘이면서 선택되지 않았을 때만 오늘 강조를 켭니다!
+    final bool showTodayHighlight = isToday && !isSelected;
+    
     return Container(
       margin: EdgeInsets.zero,
       decoration: BoxDecoration(
-        color: isToday ? Colors.amber.shade50 : Colors.white,
-        border: Border.all(color: Colors.grey.shade200, width: 0.5),
+        // ⭕ 오늘 날짜면 전체 칸을 테두리색과 유사한 진한 색으로, 선택된 날은 원래 칸 배경과 같게 흰색 베이스 유지
+        color: showTodayHighlight ? todayPointColor : Colors.white,
+        border: Border.all(
+          color: thinGridColor,
+          width: 0.5,
+        ),
       ),
-      child: Column(
+       child: Column(
         children: [
           // 1층: 날짜 헤더
           Container(
@@ -66,9 +83,9 @@ class BuildSplitCell extends StatelessWidget {
             height: 20,
             padding: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
-              color: barBgColor,
+              color: showTodayHighlight ? todayPointColor : barBgColor,
               border: Border(
-                bottom: BorderSide(color: Colors.grey.shade200, width: 0.5),
+                bottom: BorderSide(color: thinGridColor, width: 0.5),
               ),
             ),
             child: Row(
@@ -79,11 +96,11 @@ class BuildSplitCell extends StatelessWidget {
                   '${day.day}',
                   style: TextStyle(
                     color: textColor,
-                    fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: FontWeight.normal,
                     fontSize: 11,
-                  ),
+                  ).merge(settings.getGoogleFontStyle()), // ⭕ 구글 폰트 속성 강제 합성!
                 ),
-                if (data != null && data!.emotions.isNotEmpty) ...[
+                if (!isOutside && data != null && data!.emotions.isNotEmpty) ...[
                   const SizedBox(width: 4),
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -130,7 +147,7 @@ class BuildSplitCell extends StatelessWidget {
                     alignment: Alignment.center,
                     children: [
                       // 📸 실시간 경로가 확인된 진짜 사진 레이어
-                      if (displayFile)
+                      if (!isOutside &&displayFile)
                         Align(
                           alignment: Alignment.center,
                           child: AspectRatio(
@@ -145,7 +162,7 @@ class BuildSplitCell extends StatelessWidget {
                         ),
 
                       // 📝 메모 레이어 (🔧 괄호 오타 수리 완료!)
-                      if (showMemo && data != null && data!.memo.isNotEmpty)
+                      if (!isOutside && showMemo && data != null && data!.memo.isNotEmpty)
                         Positioned(
                           bottom: 1,
                           left: 2,
@@ -168,7 +185,7 @@ class BuildSplitCell extends StatelessWidget {
                                 color: Colors.black87,
                                 fontWeight: FontWeight.w500,
                                 height: 1.1, // 💡 두 줄이 되었을 때 줄간격을 살짝 콤팩트하게 조절
-                              ),
+                              ).merge(settings.getGoogleFontStyle()), // ⭕ 구글 폰트 속성 강제 합성!
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
