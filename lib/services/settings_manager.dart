@@ -39,6 +39,9 @@ class SettingsManager with ChangeNotifier {
 
   // ⭕ 단일화된 폰트 매핑 함수
   TextStyle getGoogleFontStyle() {
+    // debugPrint('🔄 [Font Loading] 현재 화면에 "$_fontFamily" 폰트 데이터를 적용하는 중...');
+
+
     switch (_fontFamily) {
       case '나눔고딕': return GoogleFonts.nanumGothic();
       case '나눔명조': return GoogleFonts.nanumMyeongjo();
@@ -96,6 +99,8 @@ class SettingsManager with ChangeNotifier {
   Future<void> setFontFamily(String font) async {
     _fontFamily = font;
     notifyListeners(); // 실시간 반영
+
+    // debugPrint('🎨 [Font Changed] 사용자가 선택한 폰트: font');
     
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('fontFamily', font); // 폰 기기에 영구 박제 🔒
@@ -105,6 +110,7 @@ class SettingsManager with ChangeNotifier {
   Future<void> setGridLineColor(Color color) async {
     _gridLineColor = color;
     notifyListeners(); // 실시간 반영
+
     
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('gridLineColor', color.toARGB32());

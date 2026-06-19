@@ -9,20 +9,6 @@ import '../services/backup_service.dart'; //
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  // 클라우드 백업 함수
-  void _backupToCloud(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  // 클라우드 복구 함수
-  void _restoreFromCloud(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsManager>(context);
