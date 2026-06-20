@@ -1,5 +1,5 @@
 # Uncomment this line to define a global platform for your project
-# platform :ios, '13.0'
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -36,8 +36,23 @@ target 'Runner' do
   end
 end
 
+
+# 💡 [핵심] 두 패키지의 버전 충돌을 강제로 화해시키는 마법의 구역
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    
+    # 🛠️ dkimagepickercontroller가 3.x 버전을 받아들이도록 강제 플래그 주입
+    if target.name == 'dkimagepickercontroller'
+      target.build_configurations.each do |config|
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'TOCROPVIEWCONTROLLER_VERSION_3=1'
+      end
+    end
+    
+    # iOS 최소 빌드 타겟 버전 통일 (빌드 에러 방지)
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+    end
   end
 end

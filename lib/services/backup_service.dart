@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart'; // 💡 Rect 클래스 사용을 위해 임포트 추가!
 import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -16,7 +17,11 @@ class BackupService {
   BackupService._init();
 
   /// 📦 1. 데이터 백업 (Export) 함수
-  Future<void> exportBackup(void Function(String message) showMessage) async {
+  // 💡 [수정] 아이패드 대응을 위해 sharePositionOrigin 파라미터를 선택적 매개변수({})로 추가했습니다!
+  Future<void> exportBackup(
+    void Function(String message) showMessage, {
+    Rect? sharePositionOrigin,
+  }) async {
     try {
       showMessage('backup_preparing'.tr()); // "백업 기능을 준비 중입니다!" 또는 커스텀 메시지
 
@@ -32,32 +37,35 @@ class BackupService {
         return {
           'id': cell.id,
           'date': cell.date.toIso8601String(), // 날짜는 글자 형태로 안전하게 변환
-          'memo': cell.memo,                   // 일기 내용 (memo)
-          'imagePath': cell.imagePath,         // 사진 파일명
-          'emotions': cell.emotions,           // 감정 리스트
+          'memo': cell.memo, // 일기 내용 (memo)
+          'imagePath': cell.imagePath, // 사진 파일명
+          'emotions': cell.emotions, // 감정 리스트
         };
       }).toList();
       final String jsonString = jsonEncode(jsonList);
 
       // 3. 사진들이 저장되어 있는 앱의 영구 폴더 경로 찾기
       final docDir = await getApplicationDocumentsDirectory();
-      
+
       // 4. 압축 파일(ZIP)을 임시로 만들어줄 메모리 주머니(Archive) 생성
       final encoder = ZipFileEncoder();
       final tempDir = await getTemporaryDirectory();
-      final String zipPath = '${tempDir.path}/diary_backup_${DateTime.now().millisecondsSinceEpoch}.zip';
-      
+      final String zipPath =
+          '${tempDir.path}/diary_backup_${DateTime.now().millisecondsSinceEpoch}.zip';
+
       // 압축 파일 만들기 시작!
       encoder.create(zipPath);
 
       // 5. 메모리 공간에 JSON 텍스트 파일을 가상으로 만들어 ZIP 안에 쏙 넣어주기
       final List<int> jsonBytes = utf8.encode(jsonString);
-      encoder.addArchiveFile(ArchiveFile('diary_backup.json', jsonBytes.length, jsonBytes));
+      encoder.addArchiveFile(
+        ArchiveFile('diary_backup.json', jsonBytes.length, jsonBytes),
+      );
 
       // 6. 영구 폴더 뒤져서 실제 사진 파일들(.jpg)도 ZIP 안에 쏙쏙 넣어주기
       final directoryList = docDir.listSync();
       int imageCount = 0;
-      
+
       for (var entity in directoryList) {
         if (entity is File && entity.path.endsWith('.jpg')) {
           // 파일명만 순수하게 추출 (예: path/2026-06-16.jpg -> 2026-06-16.jpg)
@@ -75,17 +83,23 @@ class BackupService {
       final XFile xFile = XFile(zipPath);
       await Share.shareXFiles(
         [xFile],
-        text: 'backup_share_text'.tr(namedArgs: {
-          'dataCount': jsonList.length.toString(),
-          'imageCount': imageCount.toString(),
-        }), // "내 달력 일기장 백업 파일 (데이터 {dataCount}건, 사진 {imageCount}장)"
+        text: 'backup_share_text'.tr(
+          namedArgs: {
+            'dataCount': jsonList.length.toString(),
+            'imageCount': imageCount.toString(),
+          },
+        ), // "내 달력 일기장 백업 파일 (데이터 {dataCount}건, 사진 {imageCount}장)"
+        // 💡 [핵심 수술] 아이패드 및 iOS 시뮬레이터에서 튕기지 않도록 전달받은 버튼 좌표를 꽂아줍니다!
+        sharePositionOrigin: sharePositionOrigin,
       );
 
       // 💡 [변경] 한글 메시지 로컬라이제이션 적용 완료
       showMessage('backup_export_success'.tr());
     } catch (e) {
       // 💡 [변경] 에러 메시지 템플릿 로컬라이제이션 적용 완료
-      showMessage('backup_export_failed'.tr(namedArgs: {'error': e.toString()}));
+      showMessage(
+        'backup_export_failed'.tr(namedArgs: {'error': e.toString()}),
+      );
     }
   }
 
@@ -113,7 +127,7 @@ class BackupService {
 
       // 3. 앱의 영구 저장 폴더 경로 디렉토리 찾기
       final docDir = await getApplicationDocumentsDirectory();
-      
+
       String? jsonContent;
       int imageCount = 0;
 
@@ -141,11 +155,13 @@ class BackupService {
 
       // 6. JSON 텍스트를 다시 맵 리스트로 복원 파싱
       final List<dynamic> decodedList = jsonDecode(jsonContent);
-      
+
       // 7. 파싱된 데이터를 바탕으로 하나씩 Isar DB용 모델 인스턴스로 복원
       final List<CalendarCellData> cellsToRestore = decodedList.map((item) {
         // 💡 [안전 필터 강화] 복구 시점에 공백 제거 및 소문자 치환을 무조건 거치게 만듭니다.
-        final List<String> rawEmotions = List<String>.from(item['emotions'] as List);
+        final List<String> rawEmotions = List<String>.from(
+          item['emotions'] as List,
+        );
         final List<String> cleanEmotions = rawEmotions
             .map((e) => e.toString().toLowerCase().trim())
             .where((e) => e.isNotEmpty)
@@ -159,23 +175,29 @@ class BackupService {
           emotions: cleanEmotions,
           imagePath: item['imagePath'] as String?,
         );
-        
+
         return cell; //
       }).toList(); //
 
       // 8. 💾 🎉 대망의 Isar DB 일괄 저장 (기존 id가 있으면 자동 덮어쓰기 처리)
       for (var cell in cellsToRestore) {
-        await DriftDbService.instance.saveCellData(cell); 
+        await DriftDbService.instance.saveCellData(cell);
       }
 
       // 💡 [변경] 복구 완료 메시지 변수 매핑(namedArgs) 로컬라이제이션 적용 완료
-      showMessage('backup_import_success'.tr(namedArgs: {
-        'dataCount': cellsToRestore.length.toString(),
-        'imageCount': imageCount.toString(),
-      }));
+      showMessage(
+        'backup_import_success'.tr(
+          namedArgs: {
+            'dataCount': cellsToRestore.length.toString(),
+            'imageCount': imageCount.toString(),
+          },
+        ),
+      );
     } catch (e) {
       // 💡 [변경] 에러 메시지 템플릿 로컬라이제이션 적용 완료
-      showMessage('backup_import_failed'.tr(namedArgs: {'error': e.toString()}));
+      showMessage(
+        'backup_import_failed'.tr(namedArgs: {'error': e.toString()}),
+      );
     }
   }
 }
