@@ -6,7 +6,6 @@ import '../models/emotion.dart';
 import 'package:provider/provider.dart';
 import '../services/settings_manager.dart';
 
-
 class BuildSplitCell extends StatelessWidget {
   final DateTime day;
   final Color textColor;
@@ -54,28 +53,27 @@ class BuildSplitCell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {  
+  Widget build(BuildContext context) {
     final settings = Provider.of<SettingsManager>(context);
-    
+
     // 🎨 사용자가 선택한 원본 색상 바탕으로 테두리색 재추출
     final baseColor = settings.gridLineColor;
     final thinGridColor = baseColor.withValues(alpha: 0.2); // ⭕ 달력 모든 테두리용 선 색상
-    final todayPointColor = baseColor.withValues(alpha: 0.6); // ⭕ 오늘 날짜 강조용 진한 색상
+    final todayPointColor = baseColor.withValues(
+      alpha: 0.6,
+    ); // ⭕ 오늘 날짜 강조용 진한 색상
 
     // ⭕ [추가] 오늘이면서 선택되지 않았을 때만 오늘 강조를 켭니다!
     final bool showTodayHighlight = isToday && !isSelected;
-    
+
     return Container(
       margin: EdgeInsets.zero,
       decoration: BoxDecoration(
         // ⭕ 오늘 날짜면 전체 칸을 테두리색과 유사한 진한 색으로, 선택된 날은 원래 칸 배경과 같게 흰색 베이스 유지
         color: showTodayHighlight ? todayPointColor : Colors.white,
-        border: Border.all(
-          color: thinGridColor,
-          width: 0.5,
-        ),
+        border: Border.all(color: thinGridColor, width: 0.5),
       ),
-       child: Column(
+      child: Column(
         children: [
           // 1층: 날짜 헤더
           Container(
@@ -100,19 +98,15 @@ class BuildSplitCell extends StatelessWidget {
                     fontSize: 11,
                   ).merge(settings.getGoogleFontStyle()), // ⭕ 구글 폰트 속성 강제 합성!
                 ),
-                if (!isOutside && data != null && data!.emotions.isNotEmpty) ...[
+                if (!isOutside &&
+                    data != null &&
+                    data!.emotions.isNotEmpty) ...[
                   const SizedBox(width: 4),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: data!.emotions.map((emotionName) {
                       // 1. 대소문자 및 공백 세척
                       var cleanId = emotionName.toString().toLowerCase().trim();
-                      
-                      // 💡 [구조 결함 방어존] 혹시 DB에 영/한이 섞여 "슬픔"이나 "stressed" 등이 그대로 남아있다면 고유 ID 규격으로 강제 맵핑해줍니다.
-                      if (cleanId == '슬픔' || cleanId == 'sad') cleanId = 'sad';
-                      if (cleanId == '분노' || cleanId == 'angry') cleanId = 'angry';
-                      if (cleanId == '스트레스' || cleanId == 'stressed') cleanId = 'stressed';
-                      // (프로젝트에 정의된 다른 감정들이 있다면 여기에 추가 가능)
 
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 0.5),
@@ -132,6 +126,8 @@ class BuildSplitCell extends StatelessWidget {
           ),
 
           // 2층: 일기 내용 및 사진 영역
+          // 📝 calendar_cell.dart의 2층 Expanded 내부 FutureBuilder 부분을 아래와 같이 교체해 주세요.
+          // 📝 calendar_cell.dart 파일의 2층 Expanded 내부를 아래 코드로 교체해 주세요!
           Expanded(
             child: Container(
               width: double.infinity,
@@ -141,58 +137,79 @@ class BuildSplitCell extends StatelessWidget {
                 future: _getRealImageFile(),
                 builder: (context, snapshot) {
                   final File? imgFile = snapshot.data;
-                  final bool displayFile = imgFile != null;
 
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // 📸 실시간 경로가 확인된 진짜 사진 레이어
-                      if (!isOutside &&displayFile)
-                        Align(
-                          alignment: Alignment.center,
-                          child: AspectRatio(
-                            aspectRatio: 1 / 1.3,
-                            child: Image.file(
-                              imgFile,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const SizedBox.shrink(),
-                            ),
-                          ),
-                        ),
+                  // 🌟 [핵심 수술 부위] 사진 파일이 존재하더라도, 이번 달 바깥의 날짜(isOutside)라면 사진이 없는 날로 강제 취급합니다!
+                  final bool displayFile = imgFile != null && !isOutside;
 
-                      // 📝 메모 레이어 (🔧 괄호 오타 수리 완료!)
-                      if (!isOutside && showMemo && data != null && data!.memo.isNotEmpty)
-                        Positioned(
-                          bottom: 1,
-                          left: 2,
-                          right: 2,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 2,
-                              vertical: 0.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: displayFile
-                                  ? Colors.white.withValues(alpha: 0.8)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                            child: Text(
+                  // 1. 사진이 없는 날 (or 이번 달이 아닌 날) ➡️ 메모만 깔끔하게 중앙 표시
+                  if (!displayFile) {
+                    return Center(
+                      child:
+                          (!isOutside &&
+                              showMemo &&
+                              data != null &&
+                              data!.memo.isNotEmpty)
+                          ? Text(
                               data!.memo,
                               style: const TextStyle(
                                 fontSize: 9,
                                 color: Colors.black87,
-                                fontWeight: FontWeight.w500,
-                                height: 1.1, // 💡 두 줄이 되었을 때 줄간격을 살짝 콤팩트하게 조절
-                              ).merge(settings.getGoogleFontStyle()), // ⭕ 구글 폰트 속성 강제 합성!
+                              ).merge(settings.getGoogleFontStyle()),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
-                            ),
+                            )
+                          : const SizedBox.shrink(),
+                    );
+                  }
+
+                  // 2. 📸 사진이 있는 날 (이번 달 내부이면서 데이터가 완벽할 때만 진입)
+                  return Center(
+                    child: AspectRatio(
+                      aspectRatio: 1 / 1.3, // 고정된 사진 비율
+                      child: Stack(
+                        fit: StackFit.expand, // 스택 내부 요소들이 사진 크기와 100% 일치하도록 강제
+                        children: [
+                          // 1. 밑바탕 사진 (displayFile이 참이므로 isOutside 체크는 이미 통과 완료)
+                          Image.file(
+                            imgFile,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const SizedBox.shrink(),
                           ),
-                        ),
-                    ],
+
+                          // 2. 사진 몸통 안에 딱 갇히는 메모 레이어
+                          if (showMemo && data != null && data!.memo.isNotEmpty)
+                            Positioned(
+                              bottom: 1,
+                              left: 2,
+                              right: 2,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                  vertical: 0.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                                child: Text(
+                                  data!.memo,
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.1,
+                                  ).merge(settings.getGoogleFontStyle()),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   );
                 },
               ),

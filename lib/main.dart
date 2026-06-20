@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'models/cell_data.dart';
 import 'widgets/calendar_cell.dart';
-import 'services/db_service.dart'; 
-import 'widgets/entry_dialog.dart'; 
+import 'services/db_service.dart';
+import 'widgets/entry_dialog.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:gal/gal.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'splash_screen.dart'; 
+import 'splash_screen.dart';
 
 // ⭕ 확장 기능 관련 추가 임포트
 import 'package:provider/provider.dart';
@@ -37,13 +37,13 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-@override
+  @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => SettingsManager(),
       child: const MaterialAppWithTheme(), // 👈 공유기 아래에서 진짜 앱을 실행합니다.
     );
-  }  
+  }
 }
 
 // 3. ⭐️ 에러 해결사: 프로바이더의 상태를 안전하게 수신하는 진짜 마켓 위젯입니다.
@@ -56,24 +56,26 @@ class MaterialAppWithTheme extends StatelessWidget {
     final settings = Provider.of<SettingsManager>(context);
     final fontStyle = settings.getGoogleFontStyle();
 
-    // ⭕ [핵심 안전장치] 현재 설정된 폰트 이름이 '기본글꼴'이 아니고, 
+    // ⭕ [핵심 안전장치] 현재 설정된 폰트 이름이 '기본글꼴'이 아니고,
     // 동시에 우리가 지정한 fontList에도 실제로 들어있을 때만 구글 테마를 실행합니다!
     final bool isDefaultFont = settings.fontFamily == '기본글꼴';
-    final bool isValidGoogleFont = !isDefaultFont && 
-                                   SettingsManager.fontList.contains(settings.fontFamily);
+    final bool isValidGoogleFont =
+        !isDefaultFont &&
+        SettingsManager.fontList.contains(settings.fontFamily);
     return MaterialApp(
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
       debugShowCheckedModeBanner: false,
       title: 'app_title'.tr(),
+      themeMode: ThemeMode.light,
       theme: ThemeData(
         useMaterial3: true,
+
         // 설정 화면에서 선택한 폰트를 전역으로 꽂아줍니다.
-        
-        textTheme: !isDefaultFont 
+        textTheme: !isDefaultFont
             ? GoogleFonts.getTextTheme(
-                settings.getGoogleFontFamilyName(), 
+                settings.getGoogleFontFamilyName(),
                 ThemeData.light().textTheme.merge(
                   TextTheme(
                     bodyLarge: fontStyle,
@@ -81,7 +83,7 @@ class MaterialAppWithTheme extends StatelessWidget {
                     titleLarge: fontStyle,
                   ),
                 ),
-              ) 
+              )
             : null,
         // ⭕ 여기도 리스트에 있는 정상 폰트일 때만 이름을 지정해 줍니다.
         fontFamily: isValidGoogleFont ? settings.fontFamily : null,
@@ -113,7 +115,7 @@ class _ImageCalendarState extends State<ImageCalendar> {
   @override
   void initState() {
     super.initState();
-    _loadAllCalendarData(); 
+    _loadAllCalendarData();
   }
 
   Future<void> _loadAllCalendarData() async {
@@ -160,9 +162,9 @@ class _ImageCalendarState extends State<ImageCalendar> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save image.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to save image.')));
       }
     }
   }
@@ -171,13 +173,11 @@ class _ImageCalendarState extends State<ImageCalendar> {
   Widget build(BuildContext context) {
     // ⭕ 실시간 격자선 색상 감시 및 획득
     final settings = Provider.of<SettingsManager>(context);
-    final baseColor = settings.gridLineColor; 
+    final baseColor = settings.gridLineColor;
 
     // 2. ✨ 유저님이 정하신 톤온톤 룰대로 색상 분해 공식 적용!
-    final thinGridColor = baseColor.withValues(alpha: 0.4);   // 모든 테두리 (조금 진하게)
-    final lightBgColor = baseColor.withValues(alpha: 0.15);  // 날짜칸 배경색 (제일 흐리게)
-
-    
+    final thinGridColor = baseColor.withValues(alpha: 0.4); // 모든 테두리 (조금 진하게)
+    final lightBgColor = baseColor.withValues(alpha: 0.15); // 날짜칸 배경색 (제일 흐리게)
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
@@ -220,33 +220,49 @@ class _ImageCalendarState extends State<ImageCalendar> {
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(minHeight: 100),
                           child: TableCalendar(
-                            availableGestures: AvailableGestures.horizontalSwipe,
+                            availableGestures:
+                                AvailableGestures.horizontalSwipe,
                             firstDay: DateTime.utc(2020, 1, 1),
                             lastDay: DateTime.utc(2030, 12, 31),
                             focusedDay: _focusedDay,
-                            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                            selectedDayPredicate: (day) =>
+                                isSameDay(_selectedDay, day),
+                            // 🌟 [여기에 추가!] 달을 넘길 때마다 현재 포커스된 달을 실시간 보관합니다.
+                            onPageChanged: (focusedDay) {
+                              _focusedDay = focusedDay;
+                            },
                             onDaySelected: (selectedDay, focusedDay) async {
                               setState(() {
                                 _selectedDay = selectedDay;
                                 _focusedDay = focusedDay;
                               });
-                              final normalizedDate = _normalizeDate(selectedDay);
+                              final normalizedDate = _normalizeDate(
+                                selectedDay,
+                              );
                               showEntryDialog(
                                 context: context,
                                 date: selectedDay,
-                                existingData: _calendarData[normalizedDate], 
+                                existingData: _calendarData[normalizedDate],
                                 onSave: (newData) async {
                                   bool hasDeleteSignal = newData.emotions.any(
-                                    (e) => e.toString().toUpperCase() == '_DELETE_'
+                                    (e) =>
+                                        e.toString().toUpperCase() ==
+                                        '_DELETE_',
                                   );
                                   if (hasDeleteSignal) {
                                     if (newData.id != 0) {
-                                      await DriftDbService.instance.deleteCellData(newData.id, newData.date);
+                                      await DriftDbService.instance
+                                          .deleteCellData(
+                                            newData.id,
+                                            newData.date,
+                                          );
                                     }
                                     await _loadAllCalendarData();
                                     return;
                                   }
-                                  await DriftDbService.instance.saveCellData(newData);
+                                  await DriftDbService.instance.saveCellData(
+                                    newData,
+                                  );
                                   await _loadAllCalendarData();
                                 },
                               );
@@ -257,7 +273,8 @@ class _ImageCalendarState extends State<ImageCalendar> {
                               });
                             },
                             rowHeight: (() {
-                              final double cellWidth = (MediaQuery.of(context).size.width - 24) / 7;
+                              final double cellWidth =
+                                  (MediaQuery.of(context).size.width - 24) / 7;
                               final double imageHeight = cellWidth * 1.3;
                               return imageHeight + 20;
                             })(),
@@ -265,33 +282,76 @@ class _ImageCalendarState extends State<ImageCalendar> {
                             headerStyle: HeaderStyle(
                               formatButtonVisible: false,
                               titleCentered: true,
-                              titleTextStyle: TextStyle(
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF2D2D2D),
-                              ).merge(settings.getGoogleFontStyle()), // 👈 구글 폰트 결합!
-                              leftChevronIcon: const Icon(Icons.chevron_left, color: Colors.black),
-                              rightChevronIcon: const Icon(Icons.chevron_right, color: Colors.black),
+                              titleTextStyle:
+                                  TextStyle(
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF2D2D2D),
+                                  ).merge(
+                                    settings.getGoogleFontStyle(),
+                                  ), // 👈 구글 폰트 결합!
+                              leftChevronIcon: const Icon(
+                                Icons.chevron_left,
+                                color: Colors.black,
+                              ),
+                              rightChevronIcon: const Icon(
+                                Icons.chevron_right,
+                                color: Colors.black,
+                              ),
                               headerPadding: EdgeInsets.zero,
                             ),
                             calendarBuilders: CalendarBuilders(
                               dowBuilder: (context, day) {
-                                final textStyle = TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ).merge(settings.getGoogleFontStyle()); // 👈 구글 폰트 결합!
+                                final textStyle =
+                                    TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ).merge(
+                                      settings.getGoogleFontStyle(),
+                                    ); // 👈 구글 폰트 결합!
                                 if (day.weekday == 7) {
-                                  return Center(child: Text('sun'.tr(), style: textStyle.copyWith(color: Colors.red)));
+                                  return Center(
+                                    child: Text(
+                                      'sun'.tr(),
+                                      style: textStyle.copyWith(
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  );
                                 } else if (day.weekday == 6) {
-                                  return Center(child: Text('sat'.tr(), style: textStyle.copyWith(color: Colors.blue)));
+                                  return Center(
+                                    child: Text(
+                                      'sat'.tr(),
+                                      style: textStyle.copyWith(
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                  );
                                 } else {
-                                  final text = ['mon'.tr(), 'tue'.tr(), 'wed'.tr(), 'thu'.tr(), 'fri'.tr()][day.weekday - 1];
-                                  return Center(child: Text(text, style: textStyle.copyWith(color: Colors.black87)));
+                                  final text = [
+                                    'mon'.tr(),
+                                    'tue'.tr(),
+                                    'wed'.tr(),
+                                    'thu'.tr(),
+                                    'fri'.tr(),
+                                  ][day.weekday - 1];
+                                  return Center(
+                                    child: Text(
+                                      text,
+                                      style: textStyle.copyWith(
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  );
                                 }
                               },
                               defaultBuilder: (context, day, focusedDay) {
                                 return BuildSplitCell(
                                   day: day,
-                                  textColor: day.weekday == 7 ? Colors.red.shade700 : (day.weekday == 6 ? Colors.blue.shade700 : Colors.black87),
+                                  textColor: day.weekday == 7
+                                      ? Colors.red.shade700
+                                      : (day.weekday == 6
+                                            ? Colors.blue.shade700
+                                            : Colors.black87),
                                   barBgColor: lightBgColor,
                                   isSelected: isSameDay(_selectedDay, day),
                                   data: _calendarData[_normalizeDate(day)],
@@ -321,12 +381,19 @@ class _ImageCalendarState extends State<ImageCalendar> {
                                 );
                               },
                               selectedBuilder: (context, day, focusedDay) {
+                                final bool isOutsideDay =
+                                    day.month != focusedDay.month;
                                 return BuildSplitCell(
                                   day: day,
-                                  textColor: day.weekday == 7 ? Colors.red.shade700 : (day.weekday == 6 ? Colors.blue.shade700 : Colors.black87),
+                                  textColor: day.weekday == 7
+                                      ? Colors.red.shade700
+                                      : (day.weekday == 6
+                                            ? Colors.blue.shade700
+                                            : Colors.black87),
                                   barBgColor: lightBgColor,
                                   isSelected: true,
                                   isToday: isSameDay(DateTime.now(), day),
+                                  isOutside: isOutsideDay,
                                   data: _calendarData[_normalizeDate(day)],
                                   showMemo: _showMemoWithImage,
                                 );
@@ -344,7 +411,8 @@ class _ImageCalendarState extends State<ImageCalendar> {
   }
 }
 
-class BottomAlignedAppBar extends StatelessWidget implements PreferredSizeWidget {
+class BottomAlignedAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
   final String title;
   final bool showMemoWithImage;
   final VoidCallback onTogglePressed;
@@ -425,10 +493,16 @@ class BottomAlignedAppBar extends StatelessWidget implements PreferredSizeWidget
                   onTap: onTogglePressed,
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 0, left: 8, right: 0),
+                    padding: const EdgeInsets.only(
+                      bottom: 0,
+                      left: 8,
+                      right: 0,
+                    ),
                     child: Icon(
                       showMemoWithImage ? Icons.toggle_on : Icons.toggle_off,
-                      color: showMemoWithImage ? const Color.fromARGB(255, 77, 79, 82) : Colors.grey,
+                      color: showMemoWithImage
+                          ? const Color.fromARGB(255, 77, 79, 82)
+                          : Colors.grey,
                       size: 25.0,
                     ),
                   ),

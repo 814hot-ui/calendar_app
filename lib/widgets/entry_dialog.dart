@@ -67,13 +67,13 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
   // 💡 기존에 저장되어 있던 파일명을 안전하게 추적하기 위한 변수
   String? _initialFileName;
 
- @override
+  @override
   void initState() {
     super.initState();
     _memoController = TextEditingController(
       text: widget.existingData?.memo ?? '',
     );
-    
+
     // 💡 [안전 보완] 데이터의 감정을 소문자로 바꾸고 앞뒤 공백을 싹 제거하여 저장합니다.
     _tempEmotions = (widget.existingData?.emotions ?? [])
         .map((e) => e.toString().toLowerCase().trim())
@@ -112,12 +112,13 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
     super.dispose();
   }
 
-  void _toggleEmotion(String emotionId) { // 💡 인자를 name 대신 id로 받음
+  void _toggleEmotion(String emotionId) {
+    // 💡 인자를 name 대신 id로 받음
     setState(() {
       if (_tempEmotions.contains(emotionId)) {
         _tempEmotions.remove(emotionId); // 이미 있으면 제거
       } else {
-        _tempEmotions.add(emotionId);    // 없으면 id 추가
+        _tempEmotions.add(emotionId); // 없으면 id 추가
       }
     });
   }
@@ -204,16 +205,16 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
     );
   }
 
-Widget _buildEmotionGridList(List<EmotionData> emotions) {
+  Widget _buildEmotionGridList(List<EmotionData> emotions) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: emotions.map((e) {
         // 💡 [안전 보완] DB에서 온 데이터와 현재 고유 id의 대소문자/공백 차이를 완벽히 방어하며 인덱스를 찾습니다.
         final targetId = e.id.toString().toLowerCase().trim();
         final index = _tempEmotions.indexWhere(
-          (savedId) => savedId.toString().toLowerCase().trim() == targetId
+          (savedId) => savedId.toString().toLowerCase().trim() == targetId,
         );
-        
+
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -370,9 +371,10 @@ Widget _buildEmotionGridList(List<EmotionData> emotions) {
 
           final bool isMemoEmpty = _memoController.text.trim().isEmpty;
           final bool isEmotionEmpty = realUserEmotions.isEmpty;
-          final bool isImageEmpty = (_tempImage == null && _initialFileName == null);
+          final bool isImageEmpty =
+              (_tempImage == null && _initialFileName == null);
 
-          debugPrint("📱 [DIARY_CONDITIONS] 빈값 검사 결과 -> 메모 빔: $isMemoEmpty, 감정 빔: $isEmotionEmpty, 사진 빔: $isImageEmpty");
+          // debugPrint("📱 [DIARY_CONDITIONS] 빈값 검사 결과 -> 메모 빔: $isMemoEmpty, 감정 빔: $isEmotionEmpty, 사진 빔: $isImageEmpty");
 
           // -------------------------------------------------------------
           // 1. 🗑️ [케이스 A] 그 날짜 데이터 전체를 완전히 지우는 경우 (메모, 감정, 사진 모두 전멸)
@@ -380,13 +382,13 @@ Widget _buildEmotionGridList(List<EmotionData> emotions) {
           if (isMemoEmpty && isEmotionEmpty && isImageEmpty) {
             // debugPrint("🚨 [DIARY_BRANCH] 👉 [케이스 A] 전체 삭제 조건문 진입!");
             if (widget.existingData != null) {
-              if (widget.existingData!.imagePath != null && 
+              if (widget.existingData!.imagePath != null &&
                   widget.existingData!.imagePath!.isNotEmpty) {
                 try {
                   final oldFile = File(widget.existingData!.imagePath!);
                   final bool exists = await oldFile.exists();
                   // debugPrint("🚨 [물리삭제_A] 실제 파일이 기기에 존재하나요?: $exists");
-                  
+
                   if (exists) {
                     await oldFile.delete();
                     // debugPrint("🗑️ [물리삭제_A] 성공! 기기 내부 그림 파일 삭제 완료: ${widget.existingData!.imagePath}");
@@ -397,11 +399,11 @@ Widget _buildEmotionGridList(List<EmotionData> emotions) {
               }
 
               final deleteSignalData = CalendarCellData(
-                id: widget.existingData!.id,     // ⭕ 괄호 안으로 이동
-                date: widget.existingData!.date,   // ⭕ 괄호 안으로 이동
+                id: widget.existingData!.id, // ⭕ 괄호 안으로 이동
+                date: widget.existingData!.date, // ⭕ 괄호 안으로 이동
                 memo: '',
                 emotions: ['_DELETE_'],
-                imagePath: null,                 // ⭕ 필수값 추가
+                imagePath: null, // ⭕ 필수값 추가
               );
 
               widget.onSave(deleteSignalData);
@@ -418,12 +420,11 @@ Widget _buildEmotionGridList(List<EmotionData> emotions) {
           // 2. 📸 [케이스 B] 일기(글/감정)는 놔두고 "사진만" 쏙 지우고 저장한 경우
           // -------------------------------------------------------------
           // debugPrint("📱 [DIARY_BRANCH] 케이스 B 진입 전 검증 조건문 작동중...");
-          if (widget.existingData != null && 
-              widget.existingData!.imagePath != null && 
-              widget.existingData!.imagePath!.isNotEmpty && 
-              _tempImage == null && 
+          if (widget.existingData != null &&
+              widget.existingData!.imagePath != null &&
+              widget.existingData!.imagePath!.isNotEmpty &&
+              _tempImage == null &&
               _initialFileName == null) {
-            
             // debugPrint("🚨 [DIARY_BRANCH] 👉 [케이스 B] 사진만 삭제 조건문 충족되어 진입!");
             try {
               final oldFile = File(widget.existingData!.imagePath!);
@@ -452,11 +453,13 @@ Widget _buildEmotionGridList(List<EmotionData> emotions) {
           if (_tempImage != null) {
             try {
               final appDir = await getApplicationDocumentsDirectory();
-              final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-              final String permanentPath = '${appDir.path}/diary_$timestamp.jpg';
+              final String timestamp = DateTime.now().millisecondsSinceEpoch
+                  .toString();
+              final String permanentPath =
+                  '${appDir.path}/diary_$timestamp.jpg';
 
-              if (widget.existingData != null && 
-                  widget.existingData!.imagePath != null && 
+              if (widget.existingData != null &&
+                  widget.existingData!.imagePath != null &&
                   widget.existingData!.imagePath!.isNotEmpty) {
                 final oldFile = File(widget.existingData!.imagePath!);
                 if (await oldFile.exists()) {
@@ -471,22 +474,24 @@ Widget _buildEmotionGridList(List<EmotionData> emotions) {
               // debugPrint("📸 [DIARY_SAVE] Copy Error: $e");
               finalSavedImage = _tempImage;
             }
-          }
-          else if (_initialFileName != null) {
+          } else if (_initialFileName != null) {
             final appDir = await getApplicationDocumentsDirectory();
             finalSavedImage = File('${appDir.path}/$_initialFileName');
             // debugPrint("📸 [사진유지] 기존 사진을 그대로 유지합니다: ${finalSavedImage.path}");
-          } 
+          }
 
           final newData = CalendarCellData(
-            id: widget.existingData?.id ?? 0,                     // ⭕ 추가
-            date: DateTime(widget.date.year, widget.date.month, widget.date.day), // ⭕ 추가
+            id: widget.existingData?.id ?? 0, // ⭕ 추가
+            date: DateTime(
+              widget.date.year,
+              widget.date.month,
+              widget.date.day,
+            ), // ⭕ 추가
             memo: _memoController.text,
             emotions: realUserEmotions,
-            imagePath: finalSavedImage?.path,                      // ⭕ 'image: finalSavedImage'를 이렇게 변경!
+            imagePath:
+                finalSavedImage?.path, // ⭕ 'image: finalSavedImage'를 이렇게 변경!
           );
-
-          
 
           // debugPrint("📱 [DIARY_SAVE_END] 최종 전달 데이터 -> ID: ${newData.id}, 메모: ${newData.memo}, 감정: ${newData.emotions}, 사진경로: ${newData.imagePath}");
           widget.onSave(newData);
@@ -569,9 +574,9 @@ class _EmotionButton extends StatelessWidget {
           const SizedBox(height: 4),
           // 💡 [수정] 위젯 레벨에서 새로 개편한 translationKey에 직접 .tr()을 붙여 번역을 강제합니다!
           Text(
-            emotion.translationKey.tr(), 
-            maxLines: 1,       // 무조건 한 줄로만 나오게 제한
-            softWrap: false,   // 자동 줄바꿈 금지
+            emotion.translationKey.tr(),
+            maxLines: 1, // 무조건 한 줄로만 나오게 제한
+            softWrap: false, // 자동 줄바꿈 금지
             style: TextStyle(
               fontSize: 10,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -663,7 +668,7 @@ Future<File?> _showPhotoPickerBottomSheet({
                       );
                       if (pickedFile != null && context.mounted) {
                         final File? cropped = await _cropImage(pickedFile.path);
-                    
+
                         if (cropped != null && context.mounted) {
                           Navigator.pop(context, cropped);
                         }
@@ -711,7 +716,7 @@ Future<File?> _showPhotoPickerBottomSheet({
                             final File? file = await entity.file;
                             if (file != null && context.mounted) {
                               final File? cropped = await _cropImage(file.path);
-                              
+
                               if (cropped != null && context.mounted) {
                                 Navigator.pop(context, cropped);
                               }
@@ -764,8 +769,8 @@ Future<File?> _showPhotoPickerBottomSheet({
 Future<File?> _cropImage(String sourcePath) async {
   final croppedFile = await ImageCropper().cropImage(
     sourcePath: sourcePath,
-    maxWidth: 1080,   // 가로 최대 1080px
-    maxHeight: 1404,  // 세로 최대 1404px (1:1.3 비율을 고려한 해상도)
+    maxWidth: 1080, // 가로 최대 1080px
+    maxHeight: 1404, // 세로 최대 1404px (1:1.3 비율을 고려한 해상도)
     aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1.3),
     uiSettings: [
       AndroidUiSettings(
