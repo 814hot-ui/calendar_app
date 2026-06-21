@@ -453,23 +453,35 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
           if (_tempImage != null) {
             try {
               final appDir = await getApplicationDocumentsDirectory();
-              final String timestamp = DateTime.now().millisecondsSinceEpoch
-                  .toString();
-              final String permanentPath =
-                  '${appDir.path}/diary_$timestamp.jpg';
 
+              // 1. 🌟 [핵심 변경] 저장 시점의 시간이 아니라, 일기가 지정된 날짜를 파일명으로 사용합니다!
+              // 예: widget.day가 2026년 5월 31일이라면 -> 'diary_20260531.jpg'가 됩니다.
+              final String dateStr =
+                  "${widget.date.year}${widget.date.month.toString().padLeft(2, '0')}${widget.date.day.toString().padLeft(2, '0')}";
+              final String permanentPath = '${appDir.path}/diary_$dateStr.jpg';
+              final newFile = File(permanentPath);
+
+              // 2. 🛡️ [충돌 방지 방어 코드] 만약 해당 날짜로 이미 저장된 옛날 사진 파일이 '폴더에 물리적으로 존재'한다면 먼저 싹 지워줍니다.
+              if (await newFile.exists()) {
+                await newFile.delete();
+                // debugPrint("🔄 [동일날짜교체] 기존 날짜 파일이 존재하여 덮어쓰기 전 파쇄 완료");
+              }
+
+              // 3. 🛡️ [기존 파일 삭제] 만약 기존 데이터의 경로가 새로 지정할 경로(permanentPath)와 다르고, 물리적으로 존재한다면 지워줍니다.
               if (widget.existingData != null &&
                   widget.existingData!.imagePath != null &&
                   widget.existingData!.imagePath!.isNotEmpty) {
                 final oldFile = File(widget.existingData!.imagePath!);
-                if (await oldFile.exists()) {
+                // 새로 만들 파일(newFile)과 기존 파일(oldFile)의 경로가 다를 때만 안전하게 지워줍니다.
+                if (oldFile.path != newFile.path && await oldFile.exists()) {
                   await oldFile.delete();
-                  // debugPrint("🔄 [사진교체] 새로운 사진으로 바꾸기 전, 옛날 물리 사진 파쇄 완료");
+                  // debugPrint("🔄 [사진교체] 옛날 다른 경로의 물리 사진 파쇄 완료");
                 }
               }
 
+              // 4. 새 사진을 지정된 날짜 이름의 경로로 복사합니다.
               finalSavedImage = await _tempImage!.copy(permanentPath);
-              // debugPrint("📸 [사진복사] 새 사진 영구 저장 완료: $permanentPath");
+              // debugPrint("📸 [사진복사] 날짜 이름으로 영구 저장 완료: $permanentPath");
             } catch (e) {
               // debugPrint("📸 [DIARY_SAVE] Copy Error: $e");
               finalSavedImage = _tempImage;

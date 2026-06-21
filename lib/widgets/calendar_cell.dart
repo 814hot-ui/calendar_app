@@ -164,52 +164,52 @@ class BuildSplitCell extends StatelessWidget {
                   }
 
                   // 2. 📸 사진이 있는 날 (이번 달 내부이면서 데이터가 완벽할 때만 진입)
-                  return Center(
-                    child: AspectRatio(
-                      aspectRatio: 1 / 1.3, // 고정된 사진 비율
-                      child: Stack(
-                        fit: StackFit.expand, // 스택 내부 요소들이 사진 크기와 100% 일치하도록 강제
-                        children: [
-                          // 1. 밑바탕 사진 (displayFile이 참이므로 isOutside 체크는 이미 통과 완료)
-                          Image.file(
-                            imgFile,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const SizedBox.shrink(),
-                          ),
-
-                          // 2. 사진 몸통 안에 딱 갇히는 메모 레이어
-                          if (showMemo && data != null && data!.memo.isNotEmpty)
-                            Positioned(
-                              bottom: 1,
-                              left: 2,
-                              right: 2,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 2,
-                                  vertical: 0.5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                                child: Text(
-                                  data!.memo,
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.1,
-                                  ).merge(settings.getGoogleFontStyle()),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
+                  // 🌟 [수정 완료] Center와 AspectRatio를 제거하고 바로 Stack을 뿜어줍니다!
+                  return Stack(
+                    fit: StackFit.expand, // 🌟 중요: 남은 1:1.3 방 크기에 100% 밀착시킵니다.
+                    children: [
+                      ClipRRect(
+                        // 찌꺼기 테두리가 튀어나가지 않게 안전하게 깎아주는 위젯
+                        borderRadius: BorderRadius.circular(1),
+                        child: Image.file(
+                          imgFile,
+                          fit: BoxFit
+                              .cover, // 🌟 contain 대신 cover로 방을 빈틈없이 꽉 채웁니다.
+                          errorBuilder: (context, error, stackTrace) =>
+                              const SizedBox.shrink(),
+                        ),
                       ),
-                    ),
+
+                      // 📝 메모 자막 레이어 (이하 기존 코드 동일)
+                      if (showMemo && data != null && data!.memo.isNotEmpty)
+                        Positioned(
+                          bottom: 1,
+                          left: 1,
+                          right: 1,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 1,
+                              vertical: 0.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(1),
+                            ),
+                            child: Text(
+                              data!.memo,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                                height: 1.1,
+                              ).merge(settings.getGoogleFontStyle()),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),
