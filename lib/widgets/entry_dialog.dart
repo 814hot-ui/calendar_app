@@ -481,6 +481,8 @@ class _EntryDialogContentState extends State<_EntryDialogContent> {
 
               // 4. 새 사진을 지정된 날짜 이름의 경로로 복사합니다.
               finalSavedImage = await _tempImage!.copy(permanentPath);
+              _initialFileName =
+                  null; // 🌟 [버그 수정 핵심] 새 사진 복사가 완벽히 완료되었으므로, 옛날 사진 이름 찌꺼기를 완전히 파쇄하여 교체 타이밍이 밀리는 현상을 원천 차단합니다!
               // debugPrint("📸 [사진복사] 날짜 이름으로 영구 저장 완료: $permanentPath");
             } catch (e) {
               // debugPrint("📸 [DIARY_SAVE] Copy Error: $e");

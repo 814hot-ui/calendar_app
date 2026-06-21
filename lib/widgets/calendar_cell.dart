@@ -173,6 +173,9 @@ class BuildSplitCell extends StatelessWidget {
                         borderRadius: BorderRadius.circular(1),
                         child: Image.file(
                           imgFile,
+                          key: ValueKey(
+                            '${imgFile.path}_${imgFile.lengthSync()}_${imgFile.lastModifiedSync().millisecondsSinceEpoch}',
+                          ),
                           fit: BoxFit
                               .cover, // 🌟 contain 대신 cover로 방을 빈틈없이 꽉 채웁니다.
                           errorBuilder: (context, error, stackTrace) =>

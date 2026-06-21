@@ -220,6 +220,9 @@ class _ImageCalendarState extends State<ImageCalendar> {
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(minHeight: 100),
                           child: TableCalendar(
+                            key: ValueKey(
+                              '${_calendarData.length}_${DateTime.now().millisecondsSinceEpoch}',
+                            ),
                             availableGestures:
                                 AvailableGestures.horizontalSwipe,
                             firstDay: DateTime.utc(2020, 1, 1),
@@ -249,6 +252,7 @@ class _ImageCalendarState extends State<ImageCalendar> {
                                         e.toString().toUpperCase() ==
                                         '_DELETE_',
                                   );
+
                                   if (hasDeleteSignal) {
                                     if (newData.id != 0) {
                                       await DriftDbService.instance
@@ -258,12 +262,28 @@ class _ImageCalendarState extends State<ImageCalendar> {
                                           );
                                     }
                                     await _loadAllCalendarData();
+                                    // 🌟 삭제 시에도 화면 갱신 강제
+                                    if (mounted) {
+                                      setState(() {});
+                                    }
                                     return;
                                   }
+
+                                  // 1. DB에 새 데이터를 안전하게 저장합니다.
                                   await DriftDbService.instance.saveCellData(
                                     newData,
                                   );
+
+                                  // 2. 캘린더에 뿌려줄 데이터를 DB에서 싱싱하게 새로 긁어옵니다.
                                   await _loadAllCalendarData();
+
+                                  // 3. 🌟 [핵심 보완] 데이터 로딩이 완전히 끝났으므로,
+                                  // 현재 화면(달력)에게 "데이터가 바뀌었으니 화면을 당장 새로 그려라!" 하고 setState를 때려줍니다.
+                                  if (mounted) {
+                                    setState(() {
+                                      // 이 안에서 달력 셀들이 새 key값(타임스탬프)과 새 데이터를 기반으로 리렌더링됩니다.
+                                    });
+                                  }
                                 },
                               );
                             },
