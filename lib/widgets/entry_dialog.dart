@@ -798,6 +798,9 @@ Future<File?> _cropImage(String sourcePath) async {
         title: 'Cropping Photo',
         aspectRatioLockEnabled: true,
         resetAspectRatioEnabled: false,
+        hidesNavigationBar: false,
+        aspectRatioPickerButtonHidden: false, 
+        showActivitySheetOnDone: false,
       ),
     ],
   );

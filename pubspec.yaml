@@ -55,6 +55,7 @@ dependencies:
   flutter_colorpicker: ^1.1.0
   provider: ^6.1.5+1
   package_info_plus: ^9.0.1
+  google_mobile_ads: ^9.0.0
 
 
 flutter_launcher_icons:

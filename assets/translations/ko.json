@@ -32,7 +32,7 @@
   "backup_export_title": "현재 데이터 백업하기",
   "backup_export_subtitle": "일기 텍스트와 사진을 하나의 파일로 내보냅니다.",
   "backup_import_title": "백업 파일로 복구하기",
-  "backup_import_subtitle": "이전에 백업한 파일을 가져와 데이터를 복원합니다.",
+  "backup_import_subtitle": "이전에 백업한 파일을 가져와 데이터를 복원합니다. 기존 데이터는 덮어쓰기가 됩니다.",
   "backup_preparing": "백업 기능을 준비 중입니다!",
   "backup_importing": "백업 파일을 가져오는 중입니다. 잠시만 기다려주세요...",
   "backup_share_text": "내 달력 일기장 백업 파일 (데이터 {dataCount}건, 사진 {imageCount}장)",

@@ -18,10 +18,14 @@ import 'package:provider/provider.dart';
 import 'services/settings_manager.dart';
 import 'widgets/settings_screen.dart';
 
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'widgets/ad_banner_widget.dart'; 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   await DriftDbService.instance.init();
+  await MobileAds.instance.initialize();
 
   runApp(
     // 1. 최상단에서는 다국어 설정만 깔끔하게 유지합니다.
@@ -427,6 +431,10 @@ class _ImageCalendarState extends State<ImageCalendar> {
                 ),
               ),
             ),
+
+      bottomNavigationBar: const SafeArea(
+        child: AdBannerWidget(),
+      ),        
     );
   }
 }
