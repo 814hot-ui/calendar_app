@@ -43,6 +43,24 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    
+    // 🌟 [추가 1] 플레이버 차원 정의
+    flavorDimensions.add("default")
+
+    // 🌟 [추가 2] 구체적인 플레이버 명세 (코틀린 DSL 문법 기준)
+    productFlavors {
+        create("free") {
+            dimension = "default"
+            applicationIdSuffix = ".free"
+            resValue("string", "app_name", "Biscuit Calendar (Free)")
+        }
+        create("pro") {
+            dimension = "default"
+            applicationIdSuffix = ".pro"
+            resValue("string", "app_name", "Biscuit Calendar Pro")
+        }
+    }
 }
 
 flutter {

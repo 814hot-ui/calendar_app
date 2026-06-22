@@ -20,12 +20,18 @@ import 'widgets/settings_screen.dart';
 
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'widgets/ad_banner_widget.dart'; 
+import 'package:flutter/services.dart'; // 🌟 빌드 Flavor 확인을 위해 필수 임포트!
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   await DriftDbService.instance.init();
   await MobileAds.instance.initialize();
+
+  // 🌟 [빌드 분기 1] 무료 버전(free) 플레이버일 때만 구글 모바일 광고 SDK 초기화
+  if (appFlavor == 'free') {
+    await MobileAds.instance.initialize();
+  }
 
   runApp(
     // 1. 최상단에서는 다국어 설정만 깔끔하게 유지합니다.
@@ -432,9 +438,11 @@ class _ImageCalendarState extends State<ImageCalendar> {
               ),
             ),
 
-      bottomNavigationBar: const SafeArea(
-        child: AdBannerWidget(),
-      ),        
+      bottomNavigationBar: appFlavor == 'free'
+          ? const SafeArea(
+              child: AdBannerWidget(),
+            )
+          : const SizedBox.shrink(),
     );
   }
 }
