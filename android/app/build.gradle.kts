@@ -61,7 +61,35 @@ android {
             resValue("string", "app_name", "Biscuit Calendar Pro")
         }
     }
+
+    packagingOptions {
+        resources {
+            excludes.add("/META-INF/{AL2.0,LGPL2.1}")
+        }
+        jniLibs {
+            pickFirsts.add("**/libsqlite3.so")
+        }
+    }
+
+    // 🌟 빌드 완료 시 APK/AAB 파일명을 [앱이름-플레이버-버전.apk] 형태로 자동 변경
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
+            
+            // 플레이버 이름 (free 또는 pro)
+            val flavorName = variant.productFlavors[0].name 
+            
+            // 버전 이름 (예: 1.0.0)
+            val versionName = variant.versionName 
+            
+            // 최종 파일명 조립 (예: BiscuitCalendar-free-1.0.0.apk)
+            output.outputFileName = "BiscuitCalendar-${flavorName}-${versionName}.apk"
+        }
+    }
 }
+
+
 
 flutter {
     source = "../.."
